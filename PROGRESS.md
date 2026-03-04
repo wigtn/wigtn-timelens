@@ -94,9 +94,9 @@
 - [ ] `src/components/PermissionGate.tsx` — 권한 요청 UI
 - [ ] `src/components/ErrorBoundary.tsx` — 에러 처리 UI
 
-### Agents (ADK)
-- [ ] `src/agents/orchestrator.ts` — ADK Orchestrator
-- [ ] `src/agents/curator.ts` — Curator Agent
+### Agents (ADK — 텍스트 폴백 전용, Live 모드에서는 미사용)
+- [ ] `src/agents/orchestrator.ts` — 텍스트 폴백 Orchestrator (Live 모드는 Part 1 tools.ts가 라우팅)
+- [ ] `src/agents/curator.ts` — 텍스트 폴백 Curator Agent
 
 ---
 

@@ -6,7 +6,7 @@
 > **목적**: Claude Code가 이 문서만 읽고 Part 3의 모든 파일을 독립적으로 구현할 수 있는 수준의 상세 명세
 > **참조 문서**: `docs/contracts/shared-contract.md`, `docs/contracts/gemini-sdk-reference.md`, `docs/prd/timelens-prd-ko.md`, `docs/prd/timelens-ui-flow.md`, `docs/design/part1-core-pipeline.md`
 >
-> **Source of Truth**: env var / model ID → `docs/reference/gemini-sdk-reference.md` · 타입 / 파일 소유권 → `docs/contracts/shared-contract.md` · 충돌 시 위 문서가 우선
+> **Source of Truth**: env var / model ID → `docs/contracts/gemini-sdk-reference.md` · 타입 / 파일 소유권 → `docs/contracts/shared-contract.md` · 충돌 시 위 문서가 우선
 
 ---
 

@@ -16,8 +16,10 @@ Stack: Next.js 15, React 19, TypeScript 5, Tailwind 4, shadcn/ui, @google/genai,
 - **듀얼 파이프라인**: Pipeline 1 = Live API (스트리밍 오디오/비디오), Pipeline 2 = REST (이미지 생성 등)
 - **ADK**: 서버 REST 에이전트 전용 (Part 3 Restoration, Part 4 Discovery/Diary). Live 경로에서는 사용하지 않음.
 
-## 구현 순서
+## 구현 순서 (엄격)
 Part 5 (scaffold) → Part 1 (core) → Part 2/3/4 (병렬, 파일 겹침 없음)
+
+**Part 5를 반드시 최초로 실행**: package.json 생성 + `npm install` 완료 후에야 tsc/lint/prettier가 동작합니다. Part 5 없이 다른 파트를 시작하면 Ralph 검증 훅이 스킵되어 품질 보장이 불가능합니다.
 
 ## Ralph 반복 프로토콜
 코드 변경 후 반드시 이 사이클을 따릅니다:

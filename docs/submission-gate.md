@@ -1,6 +1,6 @@
 # Submission Gate Checklist
 
-> **Source of Truth**: env var / model ID → `docs/reference/gemini-sdk-reference.md`
+> **Source of Truth**: env var / model ID → `docs/contracts/gemini-sdk-reference.md`
 > 타입 / 파일 소유권 → `docs/contracts/shared-contract.md`
 > 충돌 시 위 문서가 우선
 

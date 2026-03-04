@@ -4,7 +4,7 @@
 > **규칙**: 이 문서의 타입을 변경하려면 관련 파트 담당자 전원 합의 필요
 > **최종 위치**: 구현 시 `src/types/` 디렉토리로 이동
 >
-> **Source of Truth**: env var / model ID → `docs/reference/gemini-sdk-reference.md` · 타입 / 파일 소유권 → 이 문서 · 충돌 시 위 문서가 우선
+> **Source of Truth**: env var / model ID → `docs/contracts/gemini-sdk-reference.md` · 타입 / 파일 소유권 → 이 문서 · 충돌 시 위 문서가 우선
 
 ---
 
@@ -979,7 +979,7 @@ src/
 │   ├── camera/
 │   │   └── capture.ts                → Part 1
 │   ├── geo/
-│   │   └── location.ts               → Part 4
+│   │   └── places.ts                 → Part 4
 │   └── ws/
 │       └── manager.ts                → Part 1
 ├── components/
