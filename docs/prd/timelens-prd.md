@@ -8,6 +8,19 @@
 
 ---
 
+## Contract Documents
+
+> When implementing each section, **always consult the corresponding contract file** for exact TypeScript interfaces, API signatures, and SDK usage patterns.
+
+| Document | Path | Purpose |
+|---|---|---|
+| **Shared Contract** | [`docs/contracts/shared-contract.md`](../contracts/shared-contract.md) | All TypeScript interfaces between 5 Parts (types, props, hooks, protocols, models) |
+| **Gemini SDK Reference** | [`docs/contracts/gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) | Exact SDK import/method/config/model IDs for Live API, Image Gen, ADK, Places API |
+| **Team Build Guide** | [`docs/contracts/README.md`](../contracts/README.md) | Team workflow, parallel build execution, design document checklists |
+| **UI Flow & Scenarios** | [`docs/prd/timelens-ui-flow.md`](./timelens-ui-flow.md) | ASCII mockups, screen transitions, Knowledge Panel states, animation specs |
+
+---
+
 ## Table of Contents
 
 1. [Overview](#1-overview)
@@ -216,6 +229,21 @@ Feature: Real-time Museum Artifact Recognition and Exploration
 | FR-08 | **Session Resumption**: Auto-reconnect WebSocket with context preservation after timeout | Session Resumption |
 | FR-09 | **Multi-language Support**: AI responds in user's detected or selected language | Native Audio |
 
+> **📋 Contract Reference — P0 Requirements**
+>
+> | FR | Contract File | Section |
+> |---|---|---|
+> | FR-01, FR-04, FR-08 | [`shared-contract.md`](../contracts/shared-contract.md) | §B. Part 1↔2 Live Session Contract (`LiveSessionEvents`, `LiveSessionControls`, `UseLiveSessionReturn`) |
+> | FR-01, FR-04, FR-08 | [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) | §2. Gemini Live API (Session connect, `sendRealtimeInput`, VAD, Session Resumption) |
+> | FR-01a | [`shared-contract.md`](../contracts/shared-contract.md) | §H. Component Props (`KnowledgePanelProps`, `TranscriptProps`) |
+> | FR-02 | [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) | §2.3 `sendRealtimeInput()` — Video frame (JPEG 1fps) |
+> | FR-03 | [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) | §6. Google Search Grounding (`GOOGLE_SEARCH` sole-tool constraint) |
+> | FR-05 | [`shared-contract.md`](../contracts/shared-contract.md) | §C. Part 1↔3 Restoration Contract (`RestorationRequest`, `RestorationResponse`) |
+> | FR-05 | [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) | §3. Gemini Image Generation (`generateContent`, image editing) |
+> | FR-06 | [`shared-contract.md`](../contracts/shared-contract.md) | §H. Component Props (`BeforeAfterSliderProps`) |
+> | FR-07 | [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) | §4. Google ADK (`LlmAgent`, `subAgents`, `FunctionTool`) |
+> | FR-09 | [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) | §2.6 Available Voices (30 HD voices, multi-language) |
+
 ### 4.2 P1 - Should Have
 
 | ID | Requirement | Gemini Features Used |
@@ -225,6 +253,17 @@ Feature: Real-time Museum Artifact Recognition and Exploration
 | FR-12 | **Context Window Compression**: Compress long conversation history to extend session duration | Context Window Compression |
 | FR-13 | **Visit History**: Persist visited sites and conversations in Firestore | - |
 | FR-14 | **Share Diary**: Export diary as shareable link or PDF | - |
+
+> **📋 Contract Reference — P1 Requirements**
+>
+> | FR | Contract File | Section |
+> |---|---|---|
+> | FR-10 | [`shared-contract.md`](../contracts/shared-contract.md) | §D. Part 1↔4 Discovery & Diary Contract (`NearbyPlace`, `DiscoveryToolCall`) |
+> | FR-10 | [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) | §5. Google Places API New (searchNearby, Field Mask, Place Types) |
+> | FR-11 | [`shared-contract.md`](../contracts/shared-contract.md) | §D. Part 1↔4 (`DiaryData`, `DiaryEntry`) |
+> | FR-11 | [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) | §3.2 Text-to-Image Generation (`responseModalities: [TEXT, IMAGE]`) |
+> | FR-12 | [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) | §2.2 Session Config (`contextWindowCompression.slidingWindow`) |
+> | FR-13 | [`shared-contract.md`](../contracts/shared-contract.md) | §G. Firestore Data Model (`SessionDoc`, `VisitDoc`, `DiaryDoc`) |
 
 ### 4.3 P2 - Nice to Have
 
@@ -327,9 +366,13 @@ Feature: Real-time Museum Artifact Recognition and Exploration
 
 ### 6.2 Dual Pipeline Architecture
 
+> **📋 SDK Reference**: [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §Appendix — TimeLens Architecture-API Mapping diagram
+
 TimeLens employs a **Dual Pipeline** design to leverage both real-time streaming and batch image generation capabilities of Gemini:
 
 #### Pipeline 1: Real-time Streaming (Gemini Live API)
+
+> **📋 SDK**: [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §2 — `ai.live.connect()`, Session Methods, VAD, Ephemeral Tokens
 
 ```
 User Mic ──► PCM 16kHz ──► WebSocket ──► Live API ──► Audio Response
@@ -338,12 +381,14 @@ User Camera ──► JPEG 1fps ──► WebSocket ──► Live API ──►
 ```
 
 - **Protocol**: WebSocket (bidirectional streaming)
-- **Model**: `gemini-2.0-flash-live` (or latest Live API model)
+- **Model**: `gemini-2.5-flash-native-audio-preview-12-2025` *(see [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §2.1 for model lifecycle)*
 - **Input**: Interleaved audio (PCM 16-bit, 16kHz mono) + video frames (JPEG, 1fps, 768px max)
-- **Output**: Audio stream (PCM 24kHz) + text transcript + tool call events
+- **Output**: Audio stream (PCM **24kHz**) + text transcript + tool call events
 - **Features Used**: Live API, Vision, Native Audio, Google Search Grounding, Session Resumption, Context Window Compression
 
 #### Pipeline 2: Batch Image Generation (Gemini 2.5 Flash)
+
+> **📋 SDK**: [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §3 — `ai.models.generateContent()`, Image Editing, Response Parsing
 
 ```
 Tool Call Event ──► REST API ──► Gemini 2.5 Flash ──► Generated Image
@@ -351,9 +396,9 @@ Tool Call Event ──► REST API ──► Gemini 2.5 Flash ──► Generate
 ```
 
 - **Protocol**: REST (request/response)
-- **Model**: `gemini-2.5-flash-preview-image-generation` (or latest image gen model)
+- **Model**: `gemini-2.5-flash-image-preview` *(see [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §3.1 for model aliases)*
 - **Input**: Text prompt + optional reference image (base64)
-- **Output**: Generated image (PNG/JPEG) + text
+- **Output**: Generated image (PNG) + text
 - **Features Used**: Image Generation, Interleaved Output
 
 #### Pipeline Synchronization: Function Calling Bridge
@@ -383,6 +428,9 @@ Live API Session                          REST API
 ```
 
 ### 6.3 ADK Multi-Agent Design
+
+> **📋 SDK**: [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §4 — `LlmAgent`, `FunctionTool` (Zod), `subAgents`, `SequentialAgent`/`ParallelAgent`, `GOOGLE_SEARCH` sole-tool constraint
+> **📋 Contract**: [`shared-contract.md`](../contracts/shared-contract.md) §B/C/D — Agent-to-Agent type contracts
 
 ```
                     ┌───────────────────────┐
@@ -525,6 +573,9 @@ Live API Session                          REST API
 
 ### 6.4 WebSocket Protocol
 
+> **📋 Contract**: [`shared-contract.md`](../contracts/shared-contract.md) §E — Full WebSocket Protocol (Client→Server 5 types, Server→Client 9 types with exact TypeScript interfaces)
+> **📋 SDK**: [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §2.3/2.4 — Live API session methods & server message handling
+
 #### Client → Server Messages
 
 ```typescript
@@ -605,6 +656,8 @@ interface AgentSwitch {
 
 ### 6.5 REST API
 
+> **📋 Contract**: [`shared-contract.md`](../contracts/shared-contract.md) §F — REST API Endpoint Contract (7 endpoints with full Request/Response TypeScript types)
+
 | Method | Endpoint | Description | Request | Response |
 |---|---|---|---|---|
 | POST | `/api/session` | Create new session | `{ language, userId? }` | `{ sessionId, wsUrl, expiresAt }` |
@@ -616,6 +669,8 @@ interface AgentSwitch {
 | GET | `/api/health` | Health check | - | `{ status, version, uptime }` |
 
 ### 6.6 Firestore Data Model
+
+> **📋 Contract**: [`shared-contract.md`](../contracts/shared-contract.md) §G — Firestore Data Model (`SessionDoc`, `VisitDoc`, `DiaryDoc` with field-level types and Firestore collection paths)
 
 ```typescript
 // Collection: sessions
@@ -738,6 +793,9 @@ Day   Phase                    Deliverables                               Risk
 
 ### Phase Details
 
+> **📋 Build Guide**: [`docs/contracts/README.md`](../contracts/README.md) — Team workflow, parallel build execution, git worktree guide
+> **📋 File Ownership**: [`shared-contract.md`](../contracts/shared-contract.md) §L — File Ownership Matrix (every file → owning Part)
+
 #### Day 1: Project Setup + PoC
 - [ ] Initialize Next.js 15 project with App Router
 - [ ] Configure Tailwind CSS + shadcn/ui
@@ -748,6 +806,7 @@ Day   Phase                    Deliverables                               Risk
 - [ ] Microphone access + PCM encoding
 - [ ] Deploy to Cloud Run (CI/CD via Cloud Build)
 - **Exit Criteria**: Can establish Live API connection and send/receive audio
+- **📋 Contracts**: [`shared-contract.md`](../contracts/shared-contract.md) §A (Common Types), §J (Env Variables), §L (File Ownership) / [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §1 (Common Setup), §7 (Env Variables)
 
 #### Day 2-3: Core Voice Pipeline
 - [ ] Audio capture pipeline (MediaRecorder → PCM 16kHz → base64)
@@ -758,6 +817,7 @@ Day   Phase                    Deliverables                               Risk
 - [ ] Voice interrupt handling (server_content cancellation)
 - [ ] Basic UI: camera viewfinder + audio visualizer + status indicator
 - **Exit Criteria**: Can have natural voice conversation about camera-visible objects
+- **📋 Contracts**: [`shared-contract.md`](../contracts/shared-contract.md) §B (Live Session), §E (WebSocket Protocol), §H (`CameraViewProps`, `AudioVisualizerProps`), §I (Hook Return Types) / [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §2 (Live API full — connect, audio, video, VAD, transcription)
 
 #### Day 4-6: Multi-Agent + Reconstruction + Discovery
 - [ ] ADK Orchestrator with intent routing
@@ -770,6 +830,7 @@ Day   Phase                    Deliverables                               Risk
 - [ ] GPS + Geolocation API integration
 - [ ] Firestore session + visit tracking
 - **Exit Criteria**: All 4 agents functional; artifact restoration generates quality before/after images
+- **📋 Contracts**: [`shared-contract.md`](../contracts/shared-contract.md) §C (Restoration Contract), §D (Discovery & Diary Contract), §F (REST API), §G (Firestore), §H (`BeforeAfterSliderProps`, `NearbySitesProps`) / [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §3 (Image Generation), §4 (ADK), §5 (Places API), §6 (Google Search Grounding)
 
 #### Day 7-8: Diary + Polish + Fallback
 - [ ] Diary Agent: interleaved text + image generation
@@ -781,6 +842,7 @@ Day   Phase                    Deliverables                               Risk
 - [ ] Mobile UI polish (safe areas, orientation, gestures)
 - [ ] Firebase Anonymous Auth
 - **Exit Criteria**: Complete user flow works end-to-end; fallbacks tested
+- **📋 Contracts**: [`shared-contract.md`](../contracts/shared-contract.md) §D (`DiaryData`, `DiaryEntry`), §H (`DiaryViewerProps`), §K (Integration Scenarios) / [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §2.2 (Session Resumption, Context Compression), §3.2 (Interleaved Text + Image via `responseModalities`)
 
 #### Day 9-10: Demo + Submission
 - [ ] Demo script finalization (see Section 9)
@@ -1028,7 +1090,7 @@ Built with Gemini, for the world's heritage."
 | **Language** | TypeScript | 5.x | Type safety across full stack |
 | **Styling** | Tailwind CSS | 4.x | Utility-first, mobile responsive |
 | **UI Components** | shadcn/ui | Latest | Pre-built accessible components |
-| **AI Platform** | Gemini API | 2.5 Flash / 2.0 Flash Live | Dual pipeline AI capabilities |
+| **AI Platform** | Gemini API | 2.5 Flash Image / 2.5 Flash Native Audio | Dual pipeline AI capabilities |
 | **Agent Framework** | Google ADK | Latest | Multi-agent orchestration |
 | **Auth** | Firebase Auth | 10.x | Anonymous authentication |
 | **Database** | Firestore | 10.x | Session + visit + diary storage |
@@ -1040,6 +1102,10 @@ Built with Gemini, for the world's heritage."
 | **Camera** | MediaDevices API | Native | Camera stream capture |
 
 ### 11.2 Project File Structure
+
+> **📋 File Ownership**: [`shared-contract.md`](../contracts/shared-contract.md) §L — File Ownership Matrix (each file mapped to Part 1-5)
+> **📋 Component Props**: [`shared-contract.md`](../contracts/shared-contract.md) §H — All React component Props interfaces
+> **📋 Hook Types**: [`shared-contract.md`](../contracts/shared-contract.md) §I — Hook return type contracts (`UseCamera`, `UseMicrophone`, `UseGeolocation`)
 
 ```
 timelens/
@@ -1118,9 +1184,14 @@ timelens/
 
 ### 11.3 Environment Variables
 
+> **📋 Contract**: [`shared-contract.md`](../contracts/shared-contract.md) §J — Full `env.d.ts` type definition with `NEXT_PUBLIC_*` vs server-only classification
+> **📋 SDK**: [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §7 — All env variables with descriptions
+> **⚠️ ADK Note**: ADK TypeScript uses `GOOGLE_GENAI_API_KEY` (not `GOOGLE_GEMINI_API_KEY`). See [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §4.2
+
 ```bash
 # Gemini API
-GOOGLE_GEMINI_API_KEY=               # Gemini API key
+GEMINI_API_KEY=                      # Gemini API key (Live API, Image Gen)
+GOOGLE_GENAI_API_KEY=                # ADK uses this name
 GOOGLE_CLOUD_PROJECT=                # GCP project ID
 
 # Firebase
