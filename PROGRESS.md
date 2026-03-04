@@ -1,9 +1,9 @@
 # TimeLens Build Progress
 
 ## Current State
-- **Active Part**: Part 2 (Curator UI) ✅ COMPLETE
+- **Active Part**: Part 1 + Part 2 ✅ COMPLETE
 - **Last Session**: 2026-03-05
-- **Build Status**: Part 2 완료, tsc + lint 클린 (0 errors, 0 warnings)
+- **Build Status**: Part 5 + Part 1 + Part 2 완료, tsc + lint 클린
 
 ---
 
@@ -50,37 +50,37 @@
 
 ---
 
-## Part 1: Core Pipeline
+## Part 1: Core Pipeline ✅
 > Design: `docs/design/part1-core-pipeline.md`
 
 ### Gemini
-- [ ] `src/lib/gemini/client.ts` — 서버사이드 GoogleGenAI 인스턴스
-- [ ] `src/lib/gemini/tools.ts` — Function Call 도구 정의 + 시스템 프롬프트
-- [ ] `src/lib/gemini/live-api.ts` — 클라이언트 Live API 세션 관리
-- [ ] `src/lib/gemini/search-grounding.ts` — 검색 그라운딩 소스 추출
+- [x] `src/lib/gemini/client.ts` — 서버사이드 GoogleGenAI 인스턴스
+- [x] `src/lib/gemini/tools.ts` — Function Call 도구 정의 + 시스템 프롬프트
+- [x] `src/lib/gemini/live-api.ts` — 클라이언트 Live API 세션 관리
+- [x] `src/lib/gemini/search-grounding.ts` — 검색 그라운딩 소스 추출
 
 ### Media
-- [ ] `src/lib/audio/capture.ts` — 마이크 오디오 캡처
-- [ ] `src/lib/audio/playback.ts` — 오디오 재생 큐
-- [ ] `src/lib/camera/capture.ts` — 비디오 프레임 캡처
-- [ ] `src/lib/ws/manager.ts` — WebSocket 라이프사이클 (재연결)
+- [x] `src/lib/audio/capture.ts` — 마이크 오디오 캡처
+- [x] `src/lib/audio/playback.ts` — 오디오 재생 큐
+- [x] `src/lib/camera/capture.ts` — 비디오 프레임 캡처
+- [x] `src/lib/ws/manager.ts` — WebSocket 라이프사이클 (재연결)
 
 ### API Routes
-- [ ] `src/app/api/session/route.ts` — 세션 생성 + Ephemeral Token
-- [ ] `src/app/api/session/resume/route.ts` — 세션 재연결
-- [ ] `src/app/api/restore/route.ts` — 복원 프록시 (스캐폴드)
-- [ ] `src/app/api/discover/route.ts` — Discovery 프록시 (스캐폴드)
-- [ ] `src/app/api/diary/generate/route.ts` — Diary 생성 프록시 (스캐폴드)
-- [ ] `src/app/api/diary/[id]/route.ts` — Diary 조회 (스캐폴드)
+- [x] `src/app/api/session/route.ts` — 세션 생성 + Ephemeral Token
+- [x] `src/app/api/session/resume/route.ts` — 세션 재연결
+- [x] `src/app/api/restore/route.ts` — 복원 프록시 (스캐폴드)
+- [x] `src/app/api/discover/route.ts` — Discovery 프록시 (스캐폴드)
+- [x] `src/app/api/diary/generate/route.ts` — Diary 생성 프록시 (스캐폴드)
+- [x] `src/app/api/diary/[id]/route.ts` — Diary 조회 (스캐폴드)
 
 ### Hooks
-- [ ] `src/hooks/use-live-session.ts` — 메인 통합 훅
-- [ ] `src/hooks/use-camera.ts` — 카메라 스트림 접근
-- [ ] `src/hooks/use-microphone.ts` — 마이크 접근
+- [x] `src/hooks/use-live-session.ts` — 메인 통합 훅
+- [x] `src/hooks/use-camera.ts` — 카메라 스트림 접근
+- [x] `src/hooks/use-microphone.ts` — 마이크 접근
 
 ---
 
-## Part 2: Curator UI
+## Part 2: Curator UI ✅
 > Design: `docs/design/part2-curator-ui.md`
 
 ### Types
@@ -101,11 +101,6 @@
 - [x] `src/components/TopicChip.tsx` — 탭 가능한 토픽 칩
 - [x] `src/components/PermissionGate.tsx` — 권한 요청 UI
 - [x] `src/components/ErrorBoundary.tsx` — 에러 처리 UI
-
-### Hooks (Part 1 stub — 팀원 구현 시 교체)
-- [x] `src/hooks/use-live-session.ts` — Live Session 스텁
-- [x] `src/hooks/use-camera.ts` — 카메라 스텁
-- [x] `src/hooks/use-microphone.ts` — 마이크 스텁
 
 ### Agents (ADK — 텍스트 폴백 전용, Live 모드에서는 미사용)
 - [x] `src/agents/orchestrator.ts` — 텍스트 폴백 Orchestrator (Live 모드는 Part 1 tools.ts가 라우팅)
@@ -166,4 +161,5 @@
 | Date | Part | Files Changed | Quality Score | Notes |
 |------|------|---------------|---------------|-------|
 | 2026-03-05 | Part 5 | 27 files | tsc ✅ lint ✅ | 전체 scaffold 완료 (shadcn/ui 제외) |
+| 2026-03-05 | Part 1 | 16 files | tsc ✅ lint ✅ | Core Pipeline 완료 (Gemini Live API + Audio + Camera + Hooks) |
 | 2026-03-05 | Part 2 | 17 files | tsc ✅ lint ✅ | 전체 UI 구현 완료 (pages + components + agents + stubs) |

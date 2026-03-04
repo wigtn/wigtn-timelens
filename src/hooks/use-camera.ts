@@ -1,64 +1,63 @@
 // ============================================================
 // 파일: src/hooks/use-camera.ts
-// 담당: Part 1 (코어 파이프라인)
-// 역할: 카메라 스트림 관리 훅 — Part 1 구현 전 stub
+// 담당: Part 1
+// 역할: 카메라 스트림 접근 훅
 // ============================================================
-// TODO: Part 1이 실제 구현체로 교체 예정
-
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import type { UseCameraReturn } from '@/types/live-session';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { createCameraCapture, type CameraCapture } from '@/lib/camera/capture';
+
+export interface UseCameraReturn {
+  stream: MediaStream | null;
+  isActive: boolean;
+  error: string | null;
+  startCamera: () => Promise<void>;
+  stopCamera: () => void;
+  captureFrame: () => string | null;
+  capturePhoto: () => string | null;
+}
 
 export function useCamera(): UseCameraReturn {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const captureRef = useRef<CameraCapture | null>(null);
 
   const startCamera = useCallback(async () => {
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
+      setError(null);
+      const capture = createCameraCapture();
+      captureRef.current = capture;
+      const mediaStream = await capture.start();
       setStream(mediaStream);
       setIsActive(true);
-      setError(null);
     } catch (err) {
-      const e = err as DOMException;
-      setError(e.message || 'Camera access failed');
-      setIsActive(false);
+      const message = err instanceof Error ? err.message : 'Camera access denied';
+      setError(message);
+      throw err;
     }
   }, []);
 
   const stopCamera = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-      setStream(null);
-      setIsActive(false);
-    }
-  }, [stream]);
-
-  const captureFromVideo = (): string | null => {
-    const video = videoRef.current ?? document.querySelector('video');
-    if (!video) return null;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-
-    ctx.drawImage(video, 0, 0);
-    return canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
-  };
+    captureRef.current?.stop();
+    captureRef.current = null;
+    setStream(null);
+    setIsActive(false);
+  }, []);
 
   const captureFrame = useCallback((): string | null => {
-    return captureFromVideo();
+    return captureRef.current?.captureFrame() ?? null;
   }, []);
 
   const capturePhoto = useCallback((): string | null => {
-    return captureFromVideo();
+    return captureRef.current?.capturePhoto() ?? null;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      captureRef.current?.stop();
+    };
   }, []);
 
   return { stream, isActive, error, startCamera, stopCamera, captureFrame, capturePhoto };
