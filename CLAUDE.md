@@ -16,10 +16,19 @@ Stack: Next.js 15, React 19, TypeScript 5, Tailwind 4, shadcn/ui, @google/genai,
 - **듀얼 파이프라인**: Pipeline 1 = Live API (스트리밍 오디오/비디오), Pipeline 2 = REST (이미지 생성 등)
 - **ADK**: 서버 REST 에이전트 전용 (Part 3 Restoration, Part 4 Discovery/Diary). Live 경로에서는 사용하지 않음.
 
-## 구현 순서 (엄격)
-Part 5 (scaffold) → Part 1 (core) → Part 2/3/4 (병렬, 파일 겹침 없음)
+## 구현 순서 + 병렬 작업 규칙
 
-**Part 5를 반드시 최초로 실행**: package.json 생성 + `npm install` 완료 후에야 tsc/lint/prettier가 동작합니다. Part 5 없이 다른 파트를 시작하면 Ralph 검증 훅이 스킵되어 품질 보장이 불가능합니다.
+```
+Part 5 (scaffold) ━━ 완료 필수 ━━┓
+                                 ┣━ Part 1 / Part 2 / Part 3 / Part 4 병렬 가능
+                                 ┗━ 각 파트는 자기 소유 파일만 작성 (→ Part N 주석 참조)
+```
+
+**Part 5 선행 필수**: package.json + `npm install` + types/ 완료 후에야 tsc/lint/prettier가 동작합니다.
+
+**scaffold 라우트 충돌 방지**: Part 1이 `api/restore`, `api/discover`, `api/diary/*` scaffold를 만들면 Part 3/4가 교체합니다. 병렬 작업 시 Part 1은 scaffold 라우트를 최소 stub만 커밋하고, Part 3/4가 실제 구현으로 교체하세요.
+
+**컴포넌트 파일명**: PascalCase 사용 (예: `CameraView.tsx`, 아닌 `camera-view.tsx`).
 
 ## Ralph 반복 프로토콜
 코드 변경 후 반드시 이 사이클을 따릅니다:

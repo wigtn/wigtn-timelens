@@ -191,7 +191,7 @@ Feature: 실시간 박물관 유물 인식 및 탐험
     Given 사용자가 위치 권한을 허용했다
     When 사용자가 "근처에 다른 박물관이나 유적지 있어?"라고 말한다
     Then Discovery Agent가 Google Places API를 쿼리한다
-    And 2km 이내 최대 5개 박물관 및 문화유산을 반환한다
+    And 2km 이내 최대 10개 박물관 및 문화유산을 반환한다
     And 각 결과에 거리, 간단한 설명, 도보 시간이 포함된다
 
   Scenario: 박물관 다이어리 생성
@@ -620,7 +620,7 @@ interface Interrupt {
 interface AudioOutput {
   type: 'audio.output';
   payload: {
-    data: string;            // base64 인코딩된 PCM 24kHz
+    data: string;            // base64 인코딩된 PCM 16-bit, 24kHz, mono
     transcript?: string;     // 선택적 텍스트 트랜스크립트
   };
 }
@@ -666,8 +666,8 @@ interface AgentSwitch {
 | POST | `/api/restore` | 유물 복원 / 시간 복원 생성 | `{ artifactName, era, artifactType?, damageDescription?, referenceImage? }` | `{ imageUrl, description }` |
 | GET | `/api/discover` | 주변 박물관 및 유산 검색 | `?lat=&lng=&radius=&type=` | `{ sites: Site[] }` |
 | POST | `/api/diary/generate` | 박물관 방문 다이어리 생성 | `{ sessionId }` | `{ diary: DiaryEntry[] }` |
-| GET | `/api/diary/:id` | 생성된 다이어리 조회 | - | `{ diary: DiaryEntry[] }` |
-| GET | `/api/health` | 헬스 체크 | - | `{ status, version, uptime }` |
+| GET | `/api/diary/[id]` | 생성된 다이어리 조회 | - | `{ diary: DiaryEntry[] }` |
+| GET | `/api/health` | 헬스 체크 | - | `{ status, version, uptime, services }` |
 
 ### 6.6 Firestore 데이터 모델
 
@@ -1095,8 +1095,8 @@ Gemini로 만들었습니다, 세계의 유산을 위해."
 | **UI 컴포넌트** | shadcn/ui | 최신 | 사전 제작 접근성 컴포넌트 |
 | **AI 플랫폼** | Gemini API | 2.5 Flash Image / 2.5 Flash Native Audio | 듀얼 파이프라인 AI 기능 |
 | **에이전트 프레임워크** | Google ADK | 최신 | 멀티에이전트 오케스트레이션 |
-| **인증** | Firebase Auth | 10.x | 익명 인증 |
-| **데이터베이스** | Firestore | 10.x | 세션 + 방문 + 다이어리 저장 |
+| **인증** | Firebase Auth (firebase) | ^10.14 | 익명 인증 (클라이언트) |
+| **데이터베이스** | Firestore (firebase-admin) | ^12.7 | 세션 + 방문 + 다이어리 저장 (서버) |
 | **스토리지** | Cloud Storage | - | 이미지 저장 (복원, 다이어리) |
 | **지도** | Google Maps JS API | 3.x | GPS + 주변 시각화 |
 | **호스팅** | Cloud Run | - | 서버리스 컨테이너 호스팅 |
@@ -1113,77 +1113,95 @@ Gemini로 만들었습니다, 세계의 유산을 위해."
 ```
 timelens/
 ├── src/
-│   ├── app/                          # Next.js App Router
-│   │   ├── layout.tsx                # 루트 레이아웃 (PWA 메타, 폰트)
-│   │   ├── page.tsx                  # 랜딩 / 카메라 뷰
+│   ├── app/                            # Next.js App Router
+│   │   ├── layout.tsx                  # 루트 레이아웃 (PWA 메타, 폰트)          → Part 5 스캐폴드, Part 2 확장
+│   │   ├── page.tsx                    # 랜딩/온보딩 페이지                       → Part 2
+│   │   ├── (main)/
+│   │   │   ├── layout.tsx              # 메인 레이아웃                             → Part 2
+│   │   │   └── page.tsx                # 메인 화면 (카메라 + 패널)                → Part 2
 │   │   ├── diary/
-│   │   │   └── [id]/page.tsx         # 다이어리 뷰 + 공유
+│   │   │   └── [id]/page.tsx           # 다이어리 공유 페이지                     → Part 4
 │   │   └── api/
 │   │       ├── session/
-│   │       │   ├── route.ts          # POST: 세션 생성
-│   │       │   └── resume/route.ts   # POST: 세션 재연결
-│   │       ├── ws/route.ts           # WebSocket 업그레이드 → Live API 프록시
-│   │       ├── restore/route.ts      # POST: 유물 복원 / 이미지 생성
-│   │       ├── discover/route.ts     # GET: 주변 유적지
+│   │       │   ├── route.ts            # POST: 세션 생성 + Ephemeral Token       → Part 1
+│   │       │   └── resume/route.ts     # POST: 세션 재연결                        → Part 1
+│   │       ├── restore/route.ts        # POST: 유물 복원 / 이미지 생성           → Part 1 스캐폴드, Part 3 교체
+│   │       ├── discover/route.ts       # GET: 주변 유적지                         → Part 1 스캐폴드, Part 4 교체
 │   │       ├── diary/
-│   │       │   ├── generate/route.ts # POST: 다이어리 생성
-│   │       │   └── [id]/route.ts     # GET: 다이어리 조회
-│   │       └── health/route.ts       # GET: 헬스 체크
-│   ├── agents/                       # ADK 멀티에이전트
-│   │   ├── orchestrator.ts           # 의도 라우터
-│   │   ├── curator.ts                # Live API 음성 + 비전
-│   │   ├── restoration.ts            # 이미지 생성
-│   │   ├── discovery.ts              # Places API + 검색
-│   │   └── diary.ts                  # 인터리브 출력
+│   │       │   ├── generate/route.ts   # POST: 다이어리 생성                      → Part 1 스캐폴드, Part 4 교체
+│   │       │   └── [id]/route.ts       # GET: 다이어리 조회                       → Part 1 스캐폴드, Part 4 교체
+│   │       └── health/route.ts         # GET: 헬스 체크                           → Part 5
+│   ├── agents/                         # ADK 에이전트 (텍스트 폴백 + REST 전용)
+│   │   ├── orchestrator.ts             # 텍스트 폴백 의도 라우터                  → Part 2
+│   │   ├── curator.ts                  # 텍스트 폴백 Curator                      → Part 2
+│   │   ├── discovery.ts                # Discovery Agent (REST)                   → Part 4
+│   │   └── diary.ts                    # Diary Agent (REST)                       → Part 4
 │   ├── lib/
 │   │   ├── gemini/
-│   │   │   ├── live-api.ts           # Live API용 WebSocket 클라이언트
-│   │   │   ├── flash-image.ts        # 이미지 생성용 REST 클라이언트
-│   │   │   └── search-grounding.ts   # 검색 그라운딩 래퍼
+│   │   │   ├── client.ts               # 서버사이드 GoogleGenAI 인스턴스          → Part 1
+│   │   │   ├── tools.ts                # Function Call 도구 + 시스템 프롬프트     → Part 1 (Live API 오케스트레이션)
+│   │   │   ├── live-api.ts             # 클라이언트 Live API 세션 관리            → Part 1
+│   │   │   ├── flash-image.ts          # Gemini 2.5 Flash 이미지 생성            → Part 3
+│   │   │   └── search-grounding.ts     # 검색 그라운딩 소스 추출                 → Part 1
 │   │   ├── firebase/
-│   │   │   ├── config.ts             # Firebase 초기화
-│   │   │   ├── auth.ts               # 익명 인증
-│   │   │   └── firestore.ts          # DB 작업
+│   │   │   ├── config.ts               # Firebase 초기화 (싱글턴)                → Part 5
+│   │   │   ├── auth.ts                 # 익명 인증                                → Part 5
+│   │   │   └── firestore.ts            # CRUD 유틸                                → Part 5
 │   │   ├── audio/
-│   │   │   ├── capture.ts            # 마이크 → PCM 인코딩
-│   │   │   └── playback.ts           # PCM 디코딩 → 스피커
+│   │   │   ├── capture.ts              # 마이크 → PCM 16-bit 16kHz mono          → Part 1
+│   │   │   └── playback.ts             # PCM 16-bit 24kHz mono → 스피커          → Part 1
 │   │   ├── camera/
-│   │   │   └── capture.ts            # 카메라 → JPEG 프레임
+│   │   │   └── capture.ts              # 카메라 → base64 JPEG 1FPS              → Part 1
 │   │   ├── geo/
-│   │   │   └── location.ts           # GPS + Places API
+│   │   │   └── places.ts               # Google Places API (New) 호출            → Part 4
 │   │   └── ws/
-│   │       └── manager.ts            # WebSocket 라이프사이클 + 재연결
+│   │       └── manager.ts              # WebSocket 라이프사이클 + 재연결         → Part 1
 │   ├── components/
-│   │   ├── camera-view.tsx           # 메인 카메라 뷰파인더
-│   │   ├── audio-visualizer.tsx      # 음성 활동 표시기
-│   │   ├── before-after-slider.tsx   # 시간 복원 비교
-│   │   ├── nearby-sites.tsx          # Discovery 결과 카드
-│   │   ├── diary-viewer.tsx          # 다이어리 렌더링
-│   │   ├── knowledge-panel.tsx       # 인터랙티브 지식 패널 (요약 카드 + 채팅형 상세)
-│   │   ├── transcript.tsx            # 실시간 트랜스크립트 오버레이
-│   │   ├── agent-indicator.tsx       # 활성 에이전트 표시
-│   │   └── ui/                       # shadcn/ui 컴포넌트
+│   │   ├── CameraView.tsx              # 메인 카메라 뷰파인더                    → Part 2
+│   │   ├── KnowledgePanel.tsx          # 인터랙티브 지식 패널                    → Part 2
+│   │   ├── TranscriptChat.tsx          # 채팅형 트랜스크립트                     → Part 2
+│   │   ├── AudioVisualizer.tsx         # 오디오 파형 시각화                      → Part 2
+│   │   ├── AgentIndicator.tsx          # 에이전트 전환 표시                      → Part 2
+│   │   ├── TopicChip.tsx               # 탭 가능한 토픽 칩                       → Part 2
+│   │   ├── PermissionGate.tsx          # 권한 요청 UI                            → Part 2
+│   │   ├── ErrorBoundary.tsx           # 에러 처리 UI                            → Part 2
+│   │   ├── RestorationResult.tsx       # 복원 결과 컨테이너                      → Part 3
+│   │   ├── BeforeAfterSlider.tsx       # Before/After 슬라이더                   → Part 3
+│   │   ├── NearbyCard.tsx              # 개별 유적지 카드                        → Part 4
+│   │   ├── NearbySites.tsx             # 주변 유적지 리스트                      → Part 4
+│   │   ├── DiaryViewer.tsx             # 다이어리 뷰어                           → Part 4
+│   │   └── ui/                         # shadcn/ui 컴포넌트                      → Part 5
 │   ├── hooks/
-│   │   ├── use-live-session.ts       # Live API 세션 관리
-│   │   ├── use-camera.ts             # 카메라 스트림 훅
-│   │   ├── use-microphone.ts         # 오디오 캡처 훅
-│   │   └── use-geolocation.ts        # GPS 위치 훅
-│   └── types/
-│       ├── ws-messages.ts            # WebSocket 프로토콜 타입
-│       ├── agents.ts                 # 에이전트 타입
-│       └── models.ts                 # Firestore 모델 타입
+│   │   ├── use-live-session.ts         # 메인 통합 훅                            → Part 1
+│   │   ├── use-camera.ts               # 카메라 스트림 훅                        → Part 1
+│   │   ├── use-microphone.ts           # 마이크 접근 훅                          → Part 1
+│   │   └── use-geolocation.ts          # GPS 좌표 훅                             → Part 4
+│   └── types/                          # shared-contract.md 기준 타입            → Part 5
+│       ├── common.ts                   # §A 공유 기본 타입
+│       ├── live-session.ts             # §B Live Session 타입
+│       ├── restoration.ts              # §C Restoration 타입
+│       ├── discovery.ts                # §D Discovery 타입
+│       ├── diary.ts                    # §D Diary 타입
+│       ├── ws-messages.ts              # §E WebSocket 메시지 타입
+│       ├── api.ts                      # §F REST API 타입
+│       ├── models.ts                   # §G Firestore 모델 타입
+│       └── env.d.ts                    # §J 환경 변수 타입
 ├── public/
-│   ├── manifest.json                 # PWA 매니페스트
-│   ├── icons/                        # 앱 아이콘 (192, 512)
-│   └── sw.js                         # 서비스 워커 (최소)
-├── Dockerfile                        # Cloud Run 컨테이너
-├── cloudbuild.yaml                   # CI/CD 파이프라인
-├── .env.example                      # 환경 변수 템플릿
-├── next.config.ts                    # Next.js 설정
-├── tailwind.config.ts                # Tailwind 설정
-├── tsconfig.json                     # TypeScript 설정
-└── README.md                         # 셋업 + 아키텍처 + 데모
+│   ├── manifest.json                   # PWA 매니페스트
+│   ├── icons/                          # 앱 아이콘 (192, 512)
+│   └── sw.js                           # 서비스 워커 (최소)
+├── Dockerfile                          # Cloud Run 컨테이너
+├── cloudbuild.yaml                     # CI/CD 파이프라인
+├── .env.example                        # 환경 변수 템플릿
+├── next.config.ts                      # Next.js 설정
+├── tailwind.config.ts                  # Tailwind 설정
+├── tsconfig.json                       # TypeScript 설정
+└── README.md                           # 셋업 + 아키텍처 + 데모
 ```
+
+> **⚠️ 오케스트레이션 아키텍처**: 클라이언트는 Ephemeral Token으로 Gemini Live API에 직접 WebSocket 연결합니다 (서버 WS 프록시 없음). Live API 시스템 프롬프트 + Function Calling이 메인 오케스트레이션을 수행하며, `agents/orchestrator.ts`는 텍스트 폴백 전용입니다.
+>
+> **⚠️ 병렬 작업 규칙**: Part 5(scaffold)를 먼저 완료한 후, Part 1/2/3/4는 병렬 작업 가능합니다. 각 파일의 소유 파트(→ Part N)를 준수하세요.
 
 ### 11.3 환경 변수
 

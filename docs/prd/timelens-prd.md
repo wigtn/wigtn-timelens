@@ -191,7 +191,7 @@ Feature: Real-time Museum Artifact Recognition and Exploration
     Given the user has granted location permissions
     When the user says "What other museums or sites are nearby?"
     Then the Discovery Agent queries Google Places API
-    And returns up to 5 museums and cultural heritage sites within 2km
+    And returns up to 10 museums and cultural heritage sites within 2km
     And each result includes distance, brief description, and walking time
 
   Scenario: Museum diary generation
@@ -622,7 +622,7 @@ interface Interrupt {
 interface AudioOutput {
   type: 'audio.output';
   payload: {
-    data: string;            // base64-encoded PCM 24kHz
+    data: string;            // base64-encoded PCM 16-bit, 24kHz, mono
     transcript?: string;     // optional text transcript
   };
 }
@@ -668,8 +668,8 @@ interface AgentSwitch {
 | POST | `/api/restore` | Generate artifact restoration / time reconstruction | `{ artifactName, era, artifactType?, damageDescription?, referenceImage? }` | `{ imageUrl, description }` |
 | GET | `/api/discover` | Nearby museum and heritage discovery | `?lat=&lng=&radius=&type=` | `{ sites: Site[] }` |
 | POST | `/api/diary/generate` | Generate museum visit diary | `{ sessionId }` | `{ diary: DiaryEntry[] }` |
-| GET | `/api/diary/:id` | Get generated diary | - | `{ diary: DiaryEntry[] }` |
-| GET | `/api/health` | Health check | - | `{ status, version, uptime }` |
+| GET | `/api/diary/[id]` | Get generated diary | - | `{ diary: DiaryEntry[] }` |
+| GET | `/api/health` | Health check | - | `{ status, version, uptime, services }` |
 
 ### 6.6 Firestore Data Model
 
@@ -1097,8 +1097,8 @@ Built with Gemini, for the world's heritage."
 | **UI Components** | shadcn/ui | Latest | Pre-built accessible components |
 | **AI Platform** | Gemini API | 2.5 Flash Image / 2.5 Flash Native Audio | Dual pipeline AI capabilities |
 | **Agent Framework** | Google ADK | Latest | Multi-agent orchestration |
-| **Auth** | Firebase Auth | 10.x | Anonymous authentication |
-| **Database** | Firestore | 10.x | Session + visit + diary storage |
+| **Auth** | Firebase Auth (firebase) | ^10.14 | Anonymous authentication (client) |
+| **Database** | Firestore (firebase-admin) | ^12.7 | Session + visit + diary storage (server) |
 | **Storage** | Cloud Storage | - | Image storage (reconstructions, diary) |
 | **Maps** | Google Maps JS API | 3.x | GPS + nearby visualization |
 | **Hosting** | Cloud Run | - | Serverless container hosting |
@@ -1115,77 +1115,95 @@ Built with Gemini, for the world's heritage."
 ```
 timelens/
 ├── src/
-│   ├── app/                          # Next.js App Router
-│   │   ├── layout.tsx                # Root layout (PWA meta, fonts)
-│   │   ├── page.tsx                  # Landing / camera view
+│   ├── app/                            # Next.js App Router
+│   │   ├── layout.tsx                  # Root layout (PWA meta, fonts)             → Part 5 scaffold, Part 2 extends
+│   │   ├── page.tsx                    # Landing/onboarding page                    → Part 2
+│   │   ├── (main)/
+│   │   │   ├── layout.tsx              # Main layout                                → Part 2
+│   │   │   └── page.tsx                # Main screen (camera + panel)               → Part 2
 │   │   ├── diary/
-│   │   │   └── [id]/page.tsx         # Diary view + share
+│   │   │   └── [id]/page.tsx           # Diary share page                           → Part 4
 │   │   └── api/
 │   │       ├── session/
-│   │       │   ├── route.ts          # POST: create session
-│   │       │   └── resume/route.ts   # POST: resume session
-│   │       ├── ws/route.ts           # WebSocket upgrade → Live API proxy
-│   │       ├── restore/route.ts      # POST: artifact restoration / image gen
-│   │       ├── discover/route.ts     # GET: nearby sites
+│   │       │   ├── route.ts            # POST: create session + Ephemeral Token    → Part 1
+│   │       │   └── resume/route.ts     # POST: resume session                       → Part 1
+│   │       ├── restore/route.ts        # POST: artifact restoration / image gen    → Part 1 scaffold, Part 3 replaces
+│   │       ├── discover/route.ts       # GET: nearby sites                          → Part 1 scaffold, Part 4 replaces
 │   │       ├── diary/
-│   │       │   ├── generate/route.ts # POST: generate diary
-│   │       │   └── [id]/route.ts     # GET: fetch diary
-│   │       └── health/route.ts       # GET: health check
-│   ├── agents/                       # ADK Multi-Agent
-│   │   ├── orchestrator.ts           # Intent router
-│   │   ├── curator.ts                # Live API voice + vision
-│   │   ├── restoration.ts            # Image generation
-│   │   ├── discovery.ts              # Places API + search
-│   │   └── diary.ts                  # Interleaved output
+│   │       │   ├── generate/route.ts   # POST: generate diary                       → Part 1 scaffold, Part 4 replaces
+│   │       │   └── [id]/route.ts       # GET: fetch diary                           → Part 1 scaffold, Part 4 replaces
+│   │       └── health/route.ts         # GET: health check                          → Part 5
+│   ├── agents/                         # ADK agents (text fallback + REST only)
+│   │   ├── orchestrator.ts             # Text fallback intent router                → Part 2
+│   │   ├── curator.ts                  # Text fallback Curator                      → Part 2
+│   │   ├── discovery.ts                # Discovery Agent (REST)                     → Part 4
+│   │   └── diary.ts                    # Diary Agent (REST)                         → Part 4
 │   ├── lib/
 │   │   ├── gemini/
-│   │   │   ├── live-api.ts           # WebSocket client for Live API
-│   │   │   ├── flash-image.ts        # REST client for image gen
-│   │   │   └── search-grounding.ts   # Search grounding wrapper
+│   │   │   ├── client.ts               # Server-side GoogleGenAI instance           → Part 1
+│   │   │   ├── tools.ts                # Function Call tools + system prompt        → Part 1 (Live API orchestration)
+│   │   │   ├── live-api.ts             # Client Live API session manager            → Part 1
+│   │   │   ├── flash-image.ts          # Gemini 2.5 Flash image generation          → Part 3
+│   │   │   └── search-grounding.ts     # Search grounding source extraction         → Part 1
 │   │   ├── firebase/
-│   │   │   ├── config.ts             # Firebase initialization
-│   │   │   ├── auth.ts               # Anonymous auth
-│   │   │   └── firestore.ts          # DB operations
+│   │   │   ├── config.ts               # Firebase init (singleton)                  → Part 5
+│   │   │   ├── auth.ts                 # Anonymous auth                             → Part 5
+│   │   │   └── firestore.ts            # CRUD utilities                             → Part 5
 │   │   ├── audio/
-│   │   │   ├── capture.ts            # Mic → PCM encoding
-│   │   │   └── playback.ts           # PCM decoding → speaker
+│   │   │   ├── capture.ts              # Mic → PCM 16-bit 16kHz mono               → Part 1
+│   │   │   └── playback.ts             # PCM 16-bit 24kHz mono → speaker            → Part 1
 │   │   ├── camera/
-│   │   │   └── capture.ts            # Camera → JPEG frames
+│   │   │   └── capture.ts              # Camera → base64 JPEG 1FPS                 → Part 1
 │   │   ├── geo/
-│   │   │   └── location.ts           # GPS + Places API
+│   │   │   └── places.ts               # Google Places API (New)                    → Part 4
 │   │   └── ws/
-│   │       └── manager.ts            # WebSocket lifecycle + reconnect
+│   │       └── manager.ts              # WebSocket lifecycle + reconnect            → Part 1
 │   ├── components/
-│   │   ├── camera-view.tsx           # Main camera viewfinder
-│   │   ├── audio-visualizer.tsx      # Voice activity indicator
-│   │   ├── before-after-slider.tsx   # Time reconstruction comparison
-│   │   ├── nearby-sites.tsx          # Discovery results cards
-│   │   ├── diary-viewer.tsx          # Diary rendering
-│   │   ├── knowledge-panel.tsx       # Interactive Knowledge Panel (summary card + chat-style details)
-│   │   ├── transcript.tsx            # Real-time transcript overlay
-│   │   ├── agent-indicator.tsx       # Shows active agent
-│   │   └── ui/                       # shadcn/ui components
+│   │   ├── CameraView.tsx              # Main camera viewfinder                     → Part 2
+│   │   ├── KnowledgePanel.tsx          # Interactive knowledge panel                → Part 2
+│   │   ├── TranscriptChat.tsx          # Chat-style transcript                      → Part 2
+│   │   ├── AudioVisualizer.tsx         # Audio waveform visualizer                  → Part 2
+│   │   ├── AgentIndicator.tsx          # Agent switch indicator                     → Part 2
+│   │   ├── TopicChip.tsx               # Tappable topic chip                        → Part 2
+│   │   ├── PermissionGate.tsx          # Permission request UI                      → Part 2
+│   │   ├── ErrorBoundary.tsx           # Error handling UI                          → Part 2
+│   │   ├── RestorationResult.tsx       # Restoration result container               → Part 3
+│   │   ├── BeforeAfterSlider.tsx       # Before/After slider                        → Part 3
+│   │   ├── NearbyCard.tsx              # Individual site card                       → Part 4
+│   │   ├── NearbySites.tsx             # Nearby sites list                          → Part 4
+│   │   ├── DiaryViewer.tsx             # Diary viewer                               → Part 4
+│   │   └── ui/                         # shadcn/ui components                       → Part 5
 │   ├── hooks/
-│   │   ├── use-live-session.ts       # Live API session management
-│   │   ├── use-camera.ts             # Camera stream hook
-│   │   ├── use-microphone.ts         # Audio capture hook
-│   │   └── use-geolocation.ts        # GPS position hook
-│   └── types/
-│       ├── ws-messages.ts            # WebSocket protocol types
-│       ├── agents.ts                 # Agent types
-│       └── models.ts                 # Firestore model types
+│   │   ├── use-live-session.ts         # Main integration hook                      → Part 1
+│   │   ├── use-camera.ts               # Camera stream hook                         → Part 1
+│   │   ├── use-microphone.ts           # Mic access hook                            → Part 1
+│   │   └── use-geolocation.ts          # GPS position hook                          → Part 4
+│   └── types/                          # Types from shared-contract.md              → Part 5
+│       ├── common.ts                   # §A shared base types
+│       ├── live-session.ts             # §B Live Session types
+│       ├── restoration.ts              # §C Restoration types
+│       ├── discovery.ts                # §D Discovery types
+│       ├── diary.ts                    # §D Diary types
+│       ├── ws-messages.ts              # §E WebSocket message types
+│       ├── api.ts                      # §F REST API types
+│       ├── models.ts                   # §G Firestore model types
+│       └── env.d.ts                    # §J Environment variable types
 ├── public/
-│   ├── manifest.json                 # PWA manifest
-│   ├── icons/                        # App icons (192, 512)
-│   └── sw.js                         # Service worker (minimal)
-├── Dockerfile                        # Cloud Run container
-├── cloudbuild.yaml                   # CI/CD pipeline
-├── .env.example                      # Environment variables template
-├── next.config.ts                    # Next.js configuration
-├── tailwind.config.ts                # Tailwind configuration
-├── tsconfig.json                     # TypeScript configuration
-└── README.md                         # Setup + architecture + demo
+│   ├── manifest.json                   # PWA manifest
+│   ├── icons/                          # App icons (192, 512)
+│   └── sw.js                           # Service worker (minimal)
+├── Dockerfile                          # Cloud Run container
+├── cloudbuild.yaml                     # CI/CD pipeline
+├── .env.example                        # Environment variables template
+├── next.config.ts                      # Next.js configuration
+├── tailwind.config.ts                  # Tailwind configuration
+├── tsconfig.json                       # TypeScript configuration
+└── README.md                           # Setup + architecture + demo
 ```
+
+> **Orchestration Architecture**: Client connects directly to Gemini Live API via Ephemeral Token WebSocket (no server WS proxy). Live API system prompt + Function Calling handles primary orchestration; `agents/orchestrator.ts` is text fallback only.
+>
+> **Parallel Work Rules**: Complete Part 5 (scaffold) first, then Part 1/2/3/4 can work in parallel. Respect file ownership (→ Part N) per file.
 
 ### 11.3 Environment Variables
 
