@@ -1,9 +1,9 @@
 # TimeLens Build Progress
 
 ## Current State
-- **Active Part**: Part 1 + Part 2 ✅ COMPLETE
+- **Active Part**: Part 3 ✅ COMPLETE
 - **Last Session**: 2026-03-05
-- **Build Status**: Part 5 + Part 1 + Part 2 완료, tsc + lint 클린
+- **Build Status**: Part 5 + Part 1 + Part 2 + Part 3 완료, tsc + lint 클린
 
 ---
 
@@ -108,13 +108,14 @@
 
 ---
 
-## Part 3: Restoration
+## Part 3: Restoration ✅
 > Design: `docs/design/part3-restoration.md`
 
-- [ ] `src/lib/gemini/flash-image.ts` — Gemini 2.5 Flash 이미지 생성
-- [ ] `src/app/api/restore/route.ts` — 복원 REST API (Part 1 스캐폴드 교체)
-- [ ] `src/components/RestorationResult.tsx` — 복원 결과 컨테이너
-- [ ] `src/components/BeforeAfterSlider.tsx` — Before/After 슬라이더
+- [x] `src/lib/gemini/flash-image.ts` — Gemini 2.5 Flash 이미지 생성 (7종 카테고리 프롬프트 + Promise.race 타임아웃)
+- [x] `src/app/api/restore/route.ts` — 복원 REST API (Part 1 스캐폴드 교체, 에러 코드 4종)
+- [x] `src/components/RestorationResult.tsx` — 복원 결과 컨테이너 (4-state 머신 + 프로그레스 시뮬레이션)
+- [x] `src/components/BeforeAfterSlider.tsx` — Before/After 슬라이더 (clip-path, 60fps rAF, 키보드 접근성)
+- [x] `src/types/components.ts` — BeforeAfterSliderProps 추가 (§H)
 
 ---
 
@@ -163,3 +164,4 @@
 | 2026-03-05 | Part 5 | 27 files | tsc ✅ lint ✅ | 전체 scaffold 완료 (shadcn/ui 제외) |
 | 2026-03-05 | Part 1 | 16 files | tsc ✅ lint ✅ | Core Pipeline 완료 (Gemini Live API + Audio + Camera + Hooks) |
 | 2026-03-05 | Part 2 | 17 files | tsc ✅ lint ✅ | 전체 UI 구현 완료 (pages + components + agents + stubs) |
+| 2026-03-05 | Part 3 | 5 files | tsc ✅ lint ✅ | Restoration 완료 (Flash Image + REST API + Before/After Slider) |

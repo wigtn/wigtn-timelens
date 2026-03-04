@@ -48,3 +48,14 @@ export interface TranscriptProps {
   chunks: TranscriptChunk[];
   isStreaming: boolean;
 }
+
+// --- BeforeAfterSlider (Part 3) ---
+export interface BeforeAfterSliderProps {
+  beforeImage: string;
+  afterImage: string;
+  artifactName: string;
+  era: string;
+  description?: string;
+  onSave: () => void;
+  onShare: () => void;
+}
