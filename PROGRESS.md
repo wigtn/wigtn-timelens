@@ -1,9 +1,9 @@
 # TimeLens Build Progress
 
 ## Current State
-- **Active Part**: Part 5 (Infra/Scaffold) ✅ COMPLETE
+- **Active Part**: Part 2 (Curator UI) ✅ COMPLETE
 - **Last Session**: 2026-03-05
-- **Build Status**: Part 5 완료, tsc + lint 클린
+- **Build Status**: Part 2 완료, tsc + lint 클린 (0 errors, 0 warnings)
 
 ---
 
@@ -83,25 +83,33 @@
 ## Part 2: Curator UI
 > Design: `docs/design/part2-curator-ui.md`
 
+### Types
+- [x] `src/types/components.ts` — 컴포넌트 Props 타입
+
 ### Pages
-- [ ] `src/app/layout.tsx` — 루트 레이아웃 (Part 5 스캐폴드 확장)
-- [ ] `src/app/page.tsx` — 랜딩/온보딩
-- [ ] `src/app/(main)/layout.tsx` — 메인 레이아웃
-- [ ] `src/app/(main)/page.tsx` — 메인 화면 (카메라 + 패널)
+- [x] `src/app/layout.tsx` — 루트 레이아웃 (Part 5 스캐폴드 확장)
+- [x] `src/app/page.tsx` — 랜딩/온보딩
+- [x] `src/app/session/layout.tsx` — 메인 레이아웃
+- [x] `src/app/session/page.tsx` — 메인 화면 (카메라 + 패널)
 
 ### Components
-- [ ] `src/components/CameraView.tsx` — 카메라 뷰파인더
-- [ ] `src/components/KnowledgePanel.tsx` — 지식 패널
-- [ ] `src/components/TranscriptChat.tsx` — 채팅형 트랜스크립트
-- [ ] `src/components/AudioVisualizer.tsx` — 오디오 파형 시각화
-- [ ] `src/components/AgentIndicator.tsx` — 에이전트 전환 표시
-- [ ] `src/components/TopicChip.tsx` — 탭 가능한 토픽 칩
-- [ ] `src/components/PermissionGate.tsx` — 권한 요청 UI
-- [ ] `src/components/ErrorBoundary.tsx` — 에러 처리 UI
+- [x] `src/components/CameraView.tsx` — 카메라 뷰파인더
+- [x] `src/components/KnowledgePanel.tsx` — 지식 패널
+- [x] `src/components/TranscriptChat.tsx` — 채팅형 트랜스크립트
+- [x] `src/components/AudioVisualizer.tsx` — 오디오 파형 시각화
+- [x] `src/components/AgentIndicator.tsx` — 에이전트 전환 표시
+- [x] `src/components/TopicChip.tsx` — 탭 가능한 토픽 칩
+- [x] `src/components/PermissionGate.tsx` — 권한 요청 UI
+- [x] `src/components/ErrorBoundary.tsx` — 에러 처리 UI
+
+### Hooks (Part 1 stub — 팀원 구현 시 교체)
+- [x] `src/hooks/use-live-session.ts` — Live Session 스텁
+- [x] `src/hooks/use-camera.ts` — 카메라 스텁
+- [x] `src/hooks/use-microphone.ts` — 마이크 스텁
 
 ### Agents (ADK — 텍스트 폴백 전용, Live 모드에서는 미사용)
-- [ ] `src/agents/orchestrator.ts` — 텍스트 폴백 Orchestrator (Live 모드는 Part 1 tools.ts가 라우팅)
-- [ ] `src/agents/curator.ts` — 텍스트 폴백 Curator Agent
+- [x] `src/agents/orchestrator.ts` — 텍스트 폴백 Orchestrator (Live 모드는 Part 1 tools.ts가 라우팅)
+- [x] `src/agents/curator.ts` — 텍스트 폴백 Curator Agent
 
 ---
 
@@ -158,3 +166,4 @@
 | Date | Part | Files Changed | Quality Score | Notes |
 |------|------|---------------|---------------|-------|
 | 2026-03-05 | Part 5 | 27 files | tsc ✅ lint ✅ | 전체 scaffold 완료 (shadcn/ui 제외) |
+| 2026-03-05 | Part 2 | 17 files | tsc ✅ lint ✅ | 전체 UI 구현 완료 (pages + components + agents + stubs) |

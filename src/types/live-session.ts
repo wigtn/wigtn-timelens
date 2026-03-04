@@ -130,3 +130,24 @@ export interface TranscriptChunk {
   timestamp: number;
   sources?: string[];
 }
+
+// --- Part 1: use-camera.ts ---
+export interface UseCameraReturn {
+  stream: MediaStream | null;
+  isActive: boolean;
+  error: string | null;
+  startCamera: () => Promise<void>;
+  stopCamera: () => void;
+  captureFrame: () => string | null;     // base64 JPEG
+  capturePhoto: () => string | null;     // 고해상도 base64 JPEG
+}
+
+// --- Part 1: use-microphone.ts ---
+export interface UseMicrophoneReturn {
+  isActive: boolean;
+  isPermissionGranted: boolean;
+  error: string | null;
+  startMic: () => Promise<void>;
+  stopMic: () => void;
+  audioLevel: number;                    // 0-1 실시간 볼륨
+}
