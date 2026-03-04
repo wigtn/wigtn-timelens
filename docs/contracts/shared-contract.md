@@ -3,6 +3,8 @@
 > **목적**: 5개 파트 간 모든 인터페이스를 사전에 확정하여, 각 파트가 독립적으로 설계/구현 가능하게 함
 > **규칙**: 이 문서의 타입을 변경하려면 관련 파트 담당자 전원 합의 필요
 > **최종 위치**: 구현 시 `src/types/` 디렉토리로 이동
+>
+> **Source of Truth**: env var / model ID → `docs/reference/gemini-sdk-reference.md` · 타입 / 파일 소유권 → 이 문서 · 충돌 시 위 문서가 우선
 
 ---
 
@@ -695,7 +697,7 @@ export interface VisitDoc {
   venueName?: string;
   recognizedAt: Timestamp;
   conversationSummary: string;
-  restorationImageUrl?: string;
+  restorationImageUrl?: string;        // Cloud Storage URL (https://storage.googleapis.com/...)
   userPhotoUrl?: string;
   metadata: {
     era?: string;
@@ -862,8 +864,8 @@ export interface UseGeolocationReturn {
 
 declare namespace NodeJS {
   interface ProcessEnv {
-    // Gemini API (서버 전용)
-    GOOGLE_GEMINI_API_KEY: string;
+    // Gemini API (서버 전용) — ADK + GenAI SDK 공용
+    GOOGLE_GENAI_API_KEY: string;
     GOOGLE_CLOUD_PROJECT: string;
 
     // Firebase (클라이언트)

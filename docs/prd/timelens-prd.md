@@ -429,6 +429,7 @@ Live API Session                          REST API
 
 ### 6.3 ADK Multi-Agent Design
 
+> **Dual Architecture**: Live API (real-time orchestration, Function Calling for 4 tools) = main path / ADK (server REST agents only: Discovery Agent, Diary Agent Search Grounding, etc.)
 > **📋 SDK**: [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §4 — `LlmAgent`, `FunctionTool` (Zod), `subAgents`, `SequentialAgent`/`ParallelAgent`, `GOOGLE_SEARCH` sole-tool constraint
 > **📋 Contract**: [`shared-contract.md`](../contracts/shared-contract.md) §B/C/D — Agent-to-Agent type contracts
 
@@ -733,7 +734,7 @@ interface DiaryEntry {
 | 1 | **Platform** | Next.js Mobile Web (PWA) | Zero install friction; judge clicks URL → instant access; no app store review risk | React Native (Expo) — rejected due to app store review timeline |
 | 2 | **Real-time Communication** | Gemini Live API (WebSocket) | Native bidi audio+video streaming; < 1s latency; built-in turn detection | WebRTC → unnecessary complexity; REST polling → too slow |
 | 3 | **Image Generation** | Gemini 2.5 Flash (Image) | Single vendor (Gemini ecosystem); interleaved output support; no additional API key | DALL-E 3, Stable Diffusion → separate service, no interleaved output |
-| 4 | **Agent Framework** | Google ADK | Required by hackathon; native Gemini integration; multi-agent orchestration | LangGraph, CrewAI → not Gemini-native, loses hackathon points |
+| 4 | **Agent Framework** | Google ADK | Recommended (GenAI SDK or ADK required); native Gemini integration; multi-agent orchestration. ADK chosen for: multi-agent orchestration + judging bonus points | LangGraph, CrewAI → not Gemini-native, loses hackathon points |
 | 5 | **Database** | Firestore | Serverless, real-time sync, GCP-native, free tier sufficient for hackathon | Supabase → non-GCP; Redis → no persistence |
 | 6 | **Deployment** | Cloud Run | Serverless, auto-scaling, WebSocket support, GCP requirement met | Cloud Functions → no WebSocket; GKE → overkill |
 
@@ -741,7 +742,9 @@ interface DiaryEntry {
 
 ## 7. Implementation Phases
 
-### 10-Day Sprint Plan
+### 12-Day Sprint Plan (10 Days Implementation + 2 Days Buffer)
+
+> **Deadline**: DevPost submission 2026-03-16 17:00 PT = 2026-03-17 09:00 KST
 
 ```
 Day   Phase                    Deliverables                               Risk
@@ -1186,12 +1189,11 @@ timelens/
 
 > **📋 Contract**: [`shared-contract.md`](../contracts/shared-contract.md) §J — Full `env.d.ts` type definition with `NEXT_PUBLIC_*` vs server-only classification
 > **📋 SDK**: [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §7 — All env variables with descriptions
-> **⚠️ ADK Note**: ADK TypeScript uses `GOOGLE_GENAI_API_KEY` (not `GOOGLE_GEMINI_API_KEY`). See [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §4.2
+> **⚠️ Env Var**: Unified to single `GOOGLE_GENAI_API_KEY` (used by both ADK + GenAI SDK). See [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §4.2
 
 ```bash
-# Gemini API
-GEMINI_API_KEY=                      # Gemini API key (Live API, Image Gen)
-GOOGLE_GENAI_API_KEY=                # ADK uses this name
+# Gemini API (single key: both ADK + GenAI SDK use this name)
+GOOGLE_GENAI_API_KEY=                # Gemini API key (Live API, Image Gen, ADK)
 GOOGLE_CLOUD_PROJECT=                # GCP project ID
 
 # Firebase

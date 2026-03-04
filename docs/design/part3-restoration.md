@@ -5,6 +5,8 @@
 > **최종 수정**: 2026-03-04
 > **목적**: Claude Code가 이 문서만 읽고 Part 3의 모든 파일을 독립적으로 구현할 수 있는 수준의 상세 명세
 > **참조 문서**: `docs/contracts/shared-contract.md`, `docs/contracts/gemini-sdk-reference.md`, `docs/prd/timelens-prd-ko.md`, `docs/prd/timelens-ui-flow.md`, `docs/design/part1-core-pipeline.md`
+>
+> **Source of Truth**: env var / model ID → `docs/reference/gemini-sdk-reference.md` · 타입 / 파일 소유권 → `docs/contracts/shared-contract.md` · 충돌 시 위 문서가 우선
 
 ---
 
@@ -17,7 +19,7 @@
 | **API 방식** | REST (`ai.models.generateContent()`) -- 서버사이드 전용 |
 | **이미지 편집** | 참조 이미지(base64 inlineData) + 텍스트 프롬프트 조합 |
 | **출력 형식** | PNG, 1024x1024px 기본 |
-| **이미지 저장** | 해커톤 스코프: base64 data URL 반환 (Cloud Storage 불필요) |
+| **이미지 저장** | Cloud Storage 업로드 → URL을 Firestore에 저장 (1MB 문서 제한 회피) |
 | **프롬프트 전략** | 유물 6개 카테고리 + 건축물 1개 = 총 7개 특화 프롬프트 |
 | **타임아웃** | 30초 (이미지 생성 평균 ~10-15초, 여유 포함) |
 
@@ -462,9 +464,9 @@ export async function POST(request: NextRequest): Promise<NextResponse>;
    const generationTimeMs = Date.now() - startTime;
    ```
 
-5. **성공 응답** (해커톤 스코프 -- base64 data URL 반환):
+5. **성공 응답** (Cloud Storage 업로드 후 URL 반환):
    ```typescript
-   const imageUrl = `data:${result.mimeType};base64,${result.imageBase64}`;
+   const imageUrl = await uploadToCloudStorage(result.imageBase64, result.mimeType, sessionId);
 
    return NextResponse.json({
      success: true,
@@ -1307,38 +1309,56 @@ if (body.referenceImage) {
 
 ## 8. 이미지 저장 전략
 
-### 8.1 해커톤 스코프 (현재 구현)
+### 8.1 Cloud Storage 업로드 (현재 구현)
 
-데모 기간 중에는 **base64 data URL**을 그대로 사용한다:
-
-- `/api/restore`가 `data:image/png;base64,...` 형태의 URL을 반환
-- 클라이언트가 이를 `<img src={...}>` 에 직접 렌더링
-- Firestore `VisitDoc.restorationImageUrl`에도 data URL 저장
-
-**장점**: Cloud Storage 설정 불필요, 빠른 구현
-**단점**: Firestore 문서 크기 제한 (1MB -- base64 PNG 1024x1024 ≈ ~1.5MB이므로 초과 가능)
-
-### 8.2 Firestore 크기 문제 해결
-
-base64 PNG가 1MB를 초과할 수 있으므로, Firestore 저장 시 다음 전략 사용:
-
-1. **JPEG 변환**: PNG를 JPEG quality 0.85로 재인코딩 (서버사이드)
-   ```typescript
-   // Sharp 라이브러리 사용 (옵션 -- 해커톤 스코프에서는 생략 가능)
-   // const jpegBuffer = await sharp(pngBuffer).jpeg({ quality: 85 }).toBuffer();
-   ```
-
-2. **UI에는 원본 base64 사용**: 복원 이미지의 품질 유지
-3. **Firestore에는 저장하지 않음**: 해커톤 스코프에서는 `restorationImageUrl`을 빈 문자열로 두거나, 다이어리 기능 구현 시 별도 처리
-
-### 8.3 프로덕션 전략 (미래)
+base64 이미지를 Cloud Storage에 업로드하고, 공개 URL을 Firestore에 저장한다:
 
 ```
-클라이언트 ← data URL (즉시 렌더링)
-                     │
-                     └─► Cloud Storage에 비동기 업로드
-                         └─► Firestore에 Cloud Storage URL 저장
+API Route (/api/restore)
+  │
+  ├── Gemini 2.5 Flash Image → base64 PNG 수신
+  │
+  ├── Cloud Storage 업로드
+  │   경로: restorations/{userId}/{sessionId}/{timestamp}.png
+  │   콘텐츠 타입: image/png
+  │
+  ├── 공개 URL 획득 (storage.rules에서 restorations/ 경로 공개 읽기 허용)
+  │
+  └── 응답: { imageUrl: "https://storage.googleapis.com/...", ... }
+       └── Firestore VisitDoc.restorationImageUrl에 Cloud Storage URL 저장
 ```
+
+**근거**:
+- Firestore 문서 크기 제한 1MB — base64 PNG 1024x1024 ≈ ~1.5MB이므로 초과 가능
+- Cloud Storage는 Firebase SDK에 이미 포함 (추가 의존성 없음)
+- `storage.rules`에 이미 `restorations/` 경로 정의됨 (Part 5)
+
+### 8.2 구현 흐름
+
+```typescript
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
+async function uploadRestorationImage(
+  imageBase64: string,
+  userId: string,
+  sessionId: string,
+): Promise<string> {
+  const storage = getStorage();
+  const path = `restorations/${userId}/${sessionId}/${Date.now()}.png`;
+  const storageRef = ref(storage, path);
+
+  const buffer = Buffer.from(imageBase64, 'base64');
+  await uploadBytes(storageRef, buffer, { contentType: 'image/png' });
+
+  return getDownloadURL(storageRef);
+}
+```
+
+### 8.3 클라이언트 렌더링
+
+- `/api/restore` 응답의 `imageUrl`은 Cloud Storage URL (https://...)
+- `<img src={imageUrl}>` 로 직접 렌더링
+- Before/After 슬라이더에서 즉시 사용 가능
 
 ---
 

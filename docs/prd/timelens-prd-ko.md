@@ -429,6 +429,7 @@ Live API 세션                             REST API
 
 ### 6.3 ADK 멀티에이전트 설계
 
+> **듀얼 구조**: Live API(실시간 오케스트레이션, Function Calling으로 4개 도구 호출) = 메인 경로 / ADK(서버 REST 에이전트 전용: Discovery Agent, Diary Agent의 Search Grounding 등)
 > **📋 SDK**: [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §4 — `LlmAgent`, `FunctionTool` (Zod), `subAgents`, `SequentialAgent`/`ParallelAgent`, `GOOGLE_SEARCH` 단독 사용 제약
 > **📋 계약**: [`shared-contract.md`](../contracts/shared-contract.md) §B/C/D — 에이전트 간 타입 계약
 
@@ -731,7 +732,7 @@ interface DiaryEntry {
 | 1 | **플랫폼** | Next.js 모바일 웹 (PWA) | 설치 없이 즉시 접근; 심사위원이 URL 클릭 → 즉시 접근; 앱스토어 심사 리스크 제거 | React Native (Expo) — 앱스토어 심사 일정으로 기각 |
 | 2 | **실시간 통신** | Gemini Live API (WebSocket) | 네이티브 양방향 오디오+비디오 스트리밍; < 1초 지연; 내장 턴 감지 | WebRTC → 불필요한 복잡성; REST 폴링 → 너무 느림 |
 | 3 | **이미지 생성** | Gemini 2.5 Flash (Image) | 단일 벤더 (Gemini 생태계); 인터리브 출력 지원; 추가 API 키 불필요 | DALL-E 3, Stable Diffusion → 별도 서비스, 인터리브 출력 없음 |
-| 4 | **에이전트 프레임워크** | Google ADK | 해커톤 필수; 네이티브 Gemini 통합; 멀티에이전트 오케스트레이션 | LangGraph, CrewAI → Gemini 네이티브 아님, 해커톤 점수 손실 |
+| 4 | **에이전트 프레임워크** | Google ADK | 해커톤 권장 (GenAI SDK 또는 ADK 중 선택); 네이티브 Gemini 통합; 멀티에이전트 오케스트레이션. ADK 채택 이유: 멀티에이전트 오케스트레이션 + 심사 가산점 | LangGraph, CrewAI → Gemini 네이티브 아님, 해커톤 점수 손실 |
 | 5 | **데이터베이스** | Firestore | 서버리스, 실시간 동기화, GCP 네이티브, 해커톤에 충분한 무료 티어 | Supabase → 비GCP; Redis → 영속성 없음 |
 | 6 | **배포** | Cloud Run | 서버리스, 오토스케일링, WebSocket 지원, GCP 요구사항 충족 | Cloud Functions → WebSocket 미지원; GKE → 과잉 |
 
@@ -739,7 +740,9 @@ interface DiaryEntry {
 
 ## 7. 구현 단계
 
-### 10일 스프린트 계획
+### 12일 스프린트 계획 (10일 구현 + 2일 버퍼)
+
+> **마감**: DevPost 제출 2026-03-16 17:00 PT = 2026-03-17 09:00 KST
 
 ```
 일차  단계                     산출물                                    리스크
@@ -1184,12 +1187,11 @@ timelens/
 
 > **📋 계약**: [`shared-contract.md`](../contracts/shared-contract.md) §J — 전체 `env.d.ts` 타입 정의 (`NEXT_PUBLIC_*` vs 서버 전용 분류)
 > **📋 SDK**: [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §7 — 모든 환경 변수 설명
-> **⚠️ ADK 주의**: ADK TypeScript는 `GOOGLE_GENAI_API_KEY` 사용 (`GOOGLE_GEMINI_API_KEY` 아님). [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §4.2 참조
+> **⚠️ 환경변수**: `GOOGLE_GENAI_API_KEY` 단일 키로 통일 (ADK + GenAI SDK 공용). [`gemini-sdk-reference.md`](../contracts/gemini-sdk-reference.md) §4.2 참조
 
 ```bash
-# Gemini API
-GEMINI_API_KEY=                      # Gemini API 키 (Live API, Image Gen)
-GOOGLE_GENAI_API_KEY=                # ADK에서 사용하는 이름
+# Gemini API (단일 키: ADK + GenAI SDK 모두 이 이름 사용)
+GOOGLE_GENAI_API_KEY=                # Gemini API 키 (Live API, Image Gen, ADK)
 GOOGLE_CLOUD_PROJECT=                # GCP 프로젝트 ID
 
 # Firebase

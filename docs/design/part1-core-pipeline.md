@@ -5,6 +5,8 @@
 > **최종 수정**: 2026-03-04
 > **목적**: Claude Code가 이 문서만 읽고 Part 1의 모든 파일을 독립적으로 구현할 수 있는 수준의 상세 명세
 > **참조 문서**: `docs/contracts/shared-contract.md`, `docs/contracts/gemini-sdk-reference.md`, `docs/prd/timelens-prd-ko.md`, `docs/prd/timelens-ui-flow.md`
+>
+> **Source of Truth**: env var / model ID → `docs/reference/gemini-sdk-reference.md` · 타입 / 파일 소유권 → `docs/contracts/shared-contract.md` · 충돌 시 위 문서가 우선
 
 ---
 
@@ -88,14 +90,14 @@ export function getGeminiClient(): GoogleGenAI;
 ```
 
 **구현 상세**:
-1. `_instance`가 null이면 `new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY })` 로 생성
-2. `process.env.GOOGLE_GEMINI_API_KEY`가 없으면 즉시 `throw new Error('GOOGLE_GEMINI_API_KEY is not set')`
+1. `_instance`가 null이면 `new GoogleGenAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY })` 로 생성
+2. `process.env.GOOGLE_GENAI_API_KEY`가 없으면 즉시 `throw new Error('GOOGLE_GENAI_API_KEY is not set')`
 3. 싱글턴 패턴으로 재사용
 4. 이 파일은 서버 전용 코드 경로에서만 import
 
 **에러 처리**: 환경변수 누락 → fail-fast
 
-**의존성**: `@google/genai`, `process.env.GOOGLE_GEMINI_API_KEY`
+**의존성**: `@google/genai`, `process.env.GOOGLE_GENAI_API_KEY`
 
 ---
 

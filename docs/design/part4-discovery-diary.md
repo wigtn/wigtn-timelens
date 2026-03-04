@@ -5,6 +5,8 @@
 > **최종 수정**: 2026-03-04
 > **목적**: Claude Code가 이 문서만 읽고 Part 4의 모든 파일을 독립적으로 구현할 수 있는 수준의 상세 명세
 > **참조 문서**: `docs/contracts/shared-contract.md`, `docs/contracts/gemini-sdk-reference.md`, `docs/prd/timelens-prd-ko.md`, `docs/prd/timelens-ui-flow.md`, `docs/design/part1-core-pipeline.md`
+>
+> **Source of Truth**: env var / model ID → `docs/reference/gemini-sdk-reference.md` · 타입 / 파일 소유권 → `docs/contracts/shared-contract.md` · 충돌 시 위 문서가 우선
 
 ---
 
@@ -1129,7 +1131,7 @@ export const DISCOVERY_SYSTEM_PROMPT: string;
 export function getEnrichmentPrompt(placeNames: string[]): string;
 
 /**
- * ADK LlmAgent 정의 (추후 ADK 통합 시 사용).
+ * 현재 ADK REST Agent로 구현. Search Grounding으로 장소 설명을 보강.
  */
 export function createDiscoveryAgent(): LlmAgent;
 ```
@@ -1169,7 +1171,7 @@ ${list}`;
 #### 의존성
 
 - 없음 (순수 문자열/함수 정의)
-- ADK 통합 시: `@google/adk` (`LlmAgent`, `GOOGLE_SEARCH`)
+- 현재 ADK REST Agent: `@google/adk` (`LlmAgent`, `GOOGLE_SEARCH`)
 
 ---
 
@@ -1197,7 +1199,7 @@ export const DIARY_SYSTEM_PROMPT: string;
 export function getDiaryGenerationPrompt(visits: VisitDoc[]): string;
 
 /**
- * ADK LlmAgent 정의 (추후 ADK 통합 시 사용).
+ * 현재 ADK REST Agent로 구현. Interleaved Output으로 다이어리 생성.
  */
 export function createDiaryAgent(): LlmAgent;
 ```
@@ -1260,7 +1262,7 @@ ${visitSummaries}
 #### 의존성
 
 - `@/types/models` (`VisitDoc`)
-- ADK 통합 시: `@google/adk` (`LlmAgent`)
+- 현재 ADK REST Agent: `@google/adk` (`LlmAgent`)
 
 ---
 
@@ -1862,8 +1864,8 @@ type DiaryUIState =
 | 서비스 | 용도 | 환경변수 | 과금 |
 |---|---|---|---|
 | Google Places API (New) | 주변 장소 검색 + 사진 | `GOOGLE_PLACES_API_KEY` | ~$0.035/요청 (Preferred SKU) |
-| Gemini 2.5 Flash | Search Grounding 설명 보강 | `GOOGLE_GEMINI_API_KEY` | 표준 Flash 과금 |
-| Gemini 2.5 Flash Image | 다이어리 인터리브 출력 | `GOOGLE_GEMINI_API_KEY` | ~$0.039/이미지 |
+| Gemini 2.5 Flash | Search Grounding 설명 보강 | `GOOGLE_GENAI_API_KEY` | 표준 Flash 과금 |
+| Gemini 2.5 Flash Image | 다이어리 인터리브 출력 | `GOOGLE_GENAI_API_KEY` | ~$0.039/이미지 |
 | Firestore | VisitDoc 조회, DiaryDoc 저장 | `FIREBASE_SERVICE_ACCOUNT_KEY` | 읽기/쓰기 과금 |
 | Browser Geolocation API | GPS 좌표 | 없음 (브라우저 API) | 무료 |
 

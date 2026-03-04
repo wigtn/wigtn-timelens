@@ -44,7 +44,7 @@ npm install zod
 import { GoogleGenAI, Modality } from '@google/genai';
 
 // Google AI Studio (API Key)
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY });
 
 // Vertex AI (서비스 계정)
 const ai = new GoogleGenAI({
@@ -87,7 +87,7 @@ gemini-2.5-flash-native-audio-preview-12-2025
 ```typescript
 import { GoogleGenAI, Modality } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY });
 
 const session = await ai.live.connect({
   model: 'gemini-2.5-flash-native-audio-preview-12-2025',
@@ -345,7 +345,7 @@ const config = {
 
 ```typescript
 // 서버 사이드 (API Route)
-const serverAi = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const serverAi = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY });
 const token = await serverAi.authTokens.create({
   config: {
     uses: 1,
@@ -425,7 +425,7 @@ gemini-2.5-flash-image-preview
 ```typescript
 import { GoogleGenAI, Modality } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY });
 
 const response = await ai.models.generateContent({
   model: 'gemini-2.5-flash-image-preview',
@@ -453,7 +453,7 @@ for (const part of response.candidates![0].content.parts) {
 import { GoogleGenAI, Modality, createPartFromBase64 } from '@google/genai';
 import * as fs from 'fs';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY });
 
 async function restoreImage(imagePath: string, prompt: string): Promise<Buffer> {
   const imageBuffer = fs.readFileSync(imagePath);
@@ -960,10 +960,7 @@ const coordinator = new LlmAgent({
 ```env
 # .env.local (Next.js)
 
-# Gemini API Key (Live API, Image Generation)
-GEMINI_API_KEY=<YOUR_GEMINI_API_KEY>
-
-# ADK (Multi-Agent)
+# Gemini API Key — 단일 키 (Live API, Image Generation, ADK 공용)
 GOOGLE_GENAI_API_KEY=<YOUR_GEMINI_API_KEY>
 GOOGLE_GENAI_USE_VERTEXAI=FALSE
 
