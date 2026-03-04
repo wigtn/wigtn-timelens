@@ -1,0 +1,95 @@
+# ============================================================
+# TimeLens CI/CD Pipeline
+# Google Cloud Build -> Cloud Run 자동 배포
+# 보너스: IaC (+0.2 점)
+# ============================================================
+
+steps:
+  # ── Step 1: Docker 이미지 빌드 ─────────────────────────
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/timelens:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/timelens:latest'
+      # NEXT_PUBLIC_* 빌드 타임 환경 변수
+      - '--build-arg'
+      - 'NEXT_PUBLIC_FIREBASE_API_KEY=$_NEXT_PUBLIC_FIREBASE_API_KEY'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$_NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_FIREBASE_PROJECT_ID=$_NEXT_PUBLIC_FIREBASE_PROJECT_ID'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$_NEXT_PUBLIC_GOOGLE_MAPS_API_KEY'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_APP_URL=$_NEXT_PUBLIC_APP_URL'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_WS_URL=$_NEXT_PUBLIC_WS_URL'
+      - '.'
+
+  # ── Step 2: Container Registry에 푸시 ──────────────────
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/timelens:$COMMIT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/timelens:latest'
+
+  # ── Step 3: Cloud Run에 배포 ───────────────────────────
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'timelens'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/timelens:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
+      - '--memory'
+      - '1Gi'
+      - '--cpu'
+      - '1'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '3'
+      - '--timeout'
+      - '300'
+      - '--concurrency'
+      - '80'
+      - '--set-env-vars'
+      - 'NODE_ENV=production'
+      - '--set-secrets'
+      - 'GOOGLE_GENAI_API_KEY=GOOGLE_GENAI_API_KEY:latest,FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest,GOOGLE_PLACES_API_KEY=GOOGLE_PLACES_API_KEY:latest'
+
+# 이미지 태깅
+images:
+  - 'gcr.io/$PROJECT_ID/timelens:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/timelens:latest'
+
+# 빌드 옵션
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+
+# 타임아웃 (빌드 + 배포)
+timeout: '1200s'
+
+# Cloud Build 트리거에서 설정하는 대체 변수
+substitutions:
+  _NEXT_PUBLIC_FIREBASE_API_KEY: ''
+  _NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ''
+  _NEXT_PUBLIC_FIREBASE_PROJECT_ID: ''
+  _NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ''
+  _NEXT_PUBLIC_APP_URL: ''
+  _NEXT_PUBLIC_WS_URL: ''

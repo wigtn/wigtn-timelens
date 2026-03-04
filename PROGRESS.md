@@ -1,9 +1,9 @@
 # TimeLens Build Progress
 
 ## Current State
-- **Active Part**: Part 5 (Infra/Scaffold)
-- **Last Session**: -
-- **Build Status**: Not started
+- **Active Part**: Part 5 (Infra/Scaffold) ✅ COMPLETE
+- **Last Session**: 2026-03-05
+- **Build Status**: Part 5 완료, tsc + lint 클린
 
 ---
 
@@ -11,37 +11,42 @@
 > Design: `docs/design/part5-infra-devops.md`
 
 ### Config
-- [ ] `package.json` — 의존성 + 스크립트
-- [ ] `tsconfig.json` — TypeScript 설정
-- [ ] `next.config.ts` — Next.js 설정
-- [ ] `tailwind.config.ts` — Tailwind CSS 설정
-- [ ] `.env.example` — 환경 변수 템플릿
+- [x] `package.json` — 의존성 + 스크립트
+- [x] `tsconfig.json` — TypeScript 설정
+- [x] `next.config.ts` — Next.js 설정
+- [x] `tailwind.config.ts` — Tailwind CSS 설정
+- [x] `.env.example` — 환경 변수 템플릿
+- [x] `eslint.config.mjs` — ESLint 설정
 
 ### Styles & Utils
-- [ ] `src/app/globals.css` — Tailwind v4 디렉티브, CSS 변수
-- [ ] `src/lib/utils.ts` — cn() 함수
+- [x] `src/app/globals.css` — Tailwind v4 디렉티브, CSS 변수
+- [x] `src/lib/utils.ts` — cn() 함수
 
 ### Shared Types (shared-contract.md 기준)
-- [ ] `src/types/common.ts` — §A 공유 기본 타입
-- [ ] `src/types/live-session.ts` — §B Live Session 타입
-- [ ] `src/types/restoration.ts` — §C Restoration 타입
-- [ ] `src/types/discovery.ts` — §D Discovery 타입
-- [ ] `src/types/diary.ts` — §D Diary 타입
-- [ ] `src/types/ws-messages.ts` — §E WebSocket 메시지 타입
-- [ ] `src/types/api.ts` — §F REST API 타입
-- [ ] `src/types/models.ts` — §G Firestore 모델 타입
-- [ ] `src/types/env.d.ts` — §J 환경 변수 타입
+- [x] `src/types/common.ts` — §A 공유 기본 타입
+- [x] `src/types/live-session.ts` — §B Live Session 타입
+- [x] `src/types/restoration.ts` — §C Restoration 타입
+- [x] `src/types/discovery.ts` — §D Discovery 타입
+- [x] `src/types/diary.ts` — §D Diary 타입
+- [x] `src/types/ws-messages.ts` — §E WebSocket 메시지 타입
+- [x] `src/types/api.ts` — §F REST API 타입
+- [x] `src/types/models.ts` — §G Firestore 모델 타입
+- [x] `src/types/env.d.ts` — §J 환경 변수 타입
 
 ### Firebase
-- [ ] `src/lib/firebase/config.ts` — 싱글턴, HMR 안전
-- [ ] `src/lib/firebase/auth.ts` — 익명 인증, waitForAuth
-- [ ] `src/lib/firebase/firestore.ts` — sessions/visits/diaries CRUD
+- [x] `src/lib/firebase/config.ts` — 싱글턴, HMR 안전
+- [x] `src/lib/firebase/auth.ts` — 익명 인증, waitForAuth
+- [x] `src/lib/firebase/firestore.ts` — sessions/visits/diaries CRUD
+- [x] `firestore.rules` — Firestore 보안 규칙
+- [x] `storage.rules` — Cloud Storage 보안 규칙
 
 ### Infra
-- [ ] `src/app/api/health/route.ts` — Health check
-- [ ] `src/app/layout.tsx` — 루트 레이아웃 (Part 5 스캐폴드)
-- [ ] `Dockerfile` — 멀티 스테이지 빌드
-- [ ] shadcn/ui 컴포넌트 설치 (`src/components/ui/`)
+- [x] `src/app/api/health/route.ts` — Health check
+- [x] `src/app/layout.tsx` — 루트 레이아웃 (Part 5 스캐폴드)
+- [x] `Dockerfile` — 멀티 스테이지 빌드
+- [x] `cloudbuild.yaml` — CI/CD 파이프라인
+- [x] `public/manifest.json` — PWA 매니페스트
+- [ ] shadcn/ui 컴포넌트 설치 (`src/components/ui/`) — Part 2 구현 시 설치
 
 ---
 
@@ -152,4 +157,4 @@
 
 | Date | Part | Files Changed | Quality Score | Notes |
 |------|------|---------------|---------------|-------|
-| - | - | - | - | Not started |
+| 2026-03-05 | Part 5 | 27 files | tsc ✅ lint ✅ | 전체 scaffold 완료 (shadcn/ui 제외) |
