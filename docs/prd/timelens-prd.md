@@ -1,9 +1,9 @@
 # TimeLens PRD - AI Cultural Heritage Companion
 
-> **Hackathon**: Gemini Live Agent Challenge ($80K Prize Pool)
-> **Deadline**: March 16, 2026
-> **Track**: Best Overall Agent
-> **Version**: 1.0
+> **Hackathon**: Gemini Live Agent Challenge ($80K+ Prize Pool)
+> **Deadline**: March 16, 2026 @ 5:00 PM PT
+> **Category**: Live Agents (+ Grand Prize Target)
+> **Version**: 1.1
 > **Last Updated**: 2026-03-04
 
 ---
@@ -65,13 +65,30 @@ Museums hold humanity's greatest treasures — yet the visitor experience is fun
 | Traditional Audio Guide | Pre-recorded narration | Fixed script, no follow-up questions, no visual enhancement, **cannot skip to key facts — must listen start-to-finish** | Dynamic conversation with interrupts + visual artifact restoration + **chat-style knowledge panel for instant text access to key information** |
 | **No competitor** | Artifact restoration | No existing product restores damaged artifacts visually in real-time | **Unique: broken → complete, faded → vibrant via AI image gen** |
 
-### 1.5 Track Strategy: Best Overall Agent
+### 1.5 Category Strategy: Live Agents + Grand Prize
 
-The "Best Overall Agent" track prioritizes:
-1. **Breadth of Gemini feature usage** — TimeLens uses 9 features (maximum coverage)
-2. **Agent sophistication** — ADK Multi-Agent with 4 specialized agents + orchestrator
-3. **Real-world utility** — Solves a genuine problem for 100K+ museums worldwide and 1.4B annual heritage visitors
-4. **Production readiness** — Deployed on GCP, accessible via URL, mobile-optimized
+TimeLens targets the **"Live Agents"** category (real-time audio/vision interaction with natural interruption handling) while maximizing Grand Prize potential (highest overall score across all categories).
+
+**Judging Criteria Alignment** (actual weights from rules):
+
+| Criteria | Weight | TimeLens Strength |
+|---|---|---|
+| **Innovation & Multimodal UX** | **40%** | Voice + Vision + Image Gen + Interrupt + Knowledge Panel — breaks the "text box" paradigm completely |
+| **Technical Implementation & Agent Architecture** | **30%** | ADK Multi-Agent (4 specialists + orchestrator), Dual Pipeline, Function Calling Bridge, GCP Cloud Run |
+| **Demo & Presentation** | **30%** | Before/After slider "killer moment", clear problem/solution story, architecture diagram, live deployment proof |
+
+**Live Agents Category-Specific Scoring**:
+- Handles interruptions naturally → FR-04 Voice Interrupt (500ms response)
+- Distinct persona → Curator Agent as passionate museum docent
+- Agent "sees, hears, speaks" seamlessly → Camera + Mic + Audio output full coverage
+
+**Bonus Points Strategy** (max +1.0 extra on top of 5-point scale):
+
+| Bonus | Max Points | Plan |
+|---|---|---|
+| Content Publication (blog/video) | +0.6 | Dev.to or Medium article documenting build process with `#GeminiLiveAgentChallenge` |
+| Automated Cloud Deployment (IaC) | +0.2 | `cloudbuild.yaml` + Terraform/scripts in public repo |
+| GDG Membership | +0.2 | Team member joins Google Developer Group before submission |
 
 ---
 
@@ -786,18 +803,29 @@ Day   Phase                    Deliverables                               Risk
 | **Code Repository** | Covered | GitHub repo (public or private with judge access) |
 | **GCP Deployment Proof** | Covered | Cloud Run URL + GCP Console screenshot |
 | **Architecture Diagram** | Covered | Section 6.1 diagram (exported as SVG) |
-| **Demo Video** | Covered | 4-min video per Section 9 script |
+| **Demo Video** | Covered | 4-min video per Section 9 script; uploaded to YouTube or Vimeo (public, English or English subtitles required) |
 
-### 8.2 Judging Criteria Mapping
+### 8.2 Judging Criteria Mapping (Actual Weights)
+
+**Stage 1: Viability Pass/Fail** — All requirements met? Addresses Live Agents category? Technical requirements applied?
+
+**Stage 2: Scoring (1-5 per criterion, averaged)**
 
 | Criteria | Weight | TimeLens Strategy | Score Target |
 |---|---|---|---|
-| **Gemini API Usage** | High | 9 features used (maximum possible coverage) | 9/10 |
-| **Agent Sophistication** | High | ADK Multi-Agent with 4 specialists + orchestrator, dual pipeline, function calling bridge | 9/10 |
-| **Creativity & Innovation** | Medium | Museum artifact restoration (unique — no competitor does this), cultural heritage niche | 9/10 |
-| **Real-world Utility** | Medium | 100K+ museums worldwide; zero-install web app; multi-language; works on any artifact | 8/10 |
-| **Technical Execution** | High | Production deployment on GCP, WebSocket streaming, responsive mobile UI | 8/10 |
-| **Demo Quality** | High | Scripted 4-min demo with killer moment (before/after slider) | 9/10 |
+| **Innovation & Multimodal UX** | **40%** | Breaks "text box" paradigm: voice+vision+image gen+interrupt. Live Agents specific: handles interruptions naturally (500ms), distinct Curator persona, agent sees/hears/speaks seamlessly | 5/5 |
+| **Technical Implementation & Agent Architecture** | **30%** | ADK Multi-Agent (4 specialists + orchestrator), dual pipeline, function calling bridge, GCP Cloud Run, Firestore, graceful degradation, search grounding for anti-hallucination | 5/5 |
+| **Demo & Presentation** | **30%** | Before/After slider "killer moment", clear problem→solution story, architecture diagram, GCP deployment proof, actual working software (not mockups). Demo video on YouTube (public, English) | 5/5 |
+
+**Stage 3: Bonus Points (max +1.0)**
+
+| Bonus | Max | TimeLens Plan | Status |
+|---|---|---|---|
+| Content Publication (blog/podcast/video on public platform with `#GeminiLiveAgentChallenge`) | +0.6 | Dev.to article documenting build process | TODO |
+| Automated Cloud Deployment (IaC in public repo) | +0.2 | `cloudbuild.yaml` + deployment scripts already planned | PLANNED |
+| GDG Membership (active member with public profile) | +0.2 | Team member joins GDG before submission | TODO |
+
+**Maximum possible score: 6.0** (5.0 base + 1.0 bonus)
 
 ### 8.3 Gemini Feature Matrix (for Submission Description)
 
@@ -1112,27 +1140,40 @@ NEXT_PUBLIC_WS_URL=                  # WebSocket endpoint
 
 ### 11.4 Prize Optimization Strategy
 
-**Target**: Best Overall Agent ($30K Grand Prize)
+**Primary Target**: Live Agents Category ($10K + NEXT tickets + $1K credits)
+**Secondary Target**: Grand Prize ($25K + $3K credits + NEXT tickets + travel stipend up to $6K + demo opportunity)
+**Additional Targets**: Best Multimodal Integration & UX ($5K), Best Technical Execution ($5K)
+
+**Prize Structure Summary**:
+
+| Prize | Amount | Requirements |
+|---|---|---|
+| Live Agents Category Winner | $10K + 2x NEXT tickets ($2,299 ea) + $1K credits + Google virtual coffee | Highest score in Live Agents category |
+| Grand Prize | $25K + $3K credits + 2x NEXT tickets + 2x travel stipends (max $3K ea) + demo at NEXT | Highest overall score across all categories |
+| Best Multimodal Integration & UX | $5K + $500 credits | Subcategory award |
+| Best Technical Execution | $5K + $500 credits | Subcategory award |
+| Honorable Mention (5 awards) | $2K + $500 credits each | Top entries not winning above |
 
 **Differentiation Pillars**:
 
-1. **Feature Count Leadership**: 9 Gemini features (likely highest among competitors)
-2. **Visual "Wow" Moment**: Damaged artifact → pristine restoration via Before/After slider — instantly understandable and emotionally compelling. Judges remember this
-3. **Museum-First = Untapped Niche**: No existing product does real-time AI artifact restoration + voice conversation in museums. Outdoor heritage apps exist (Google Arts & Culture); museum artifact restoration does NOT
-4. **Real Problem, Real Users**: 100K+ museums worldwide, billions of artifacts behind glass with inadequate labels
-5. **Zero Friction**: URL → camera → talking to AI in < 10 seconds
-6. **Multi-Agent Sophistication**: Not just chatbot; 4 specialized agents with pipeline orchestration
-7. **Production Quality**: Deployed on GCP, responsive mobile UI, proper error handling
+1. **Visual "Wow" Moment**: Damaged artifact → pristine restoration via Before/After slider — instantly understandable and emotionally compelling. Judges remember this
+2. **Museum-First = Untapped Niche**: No existing product does real-time AI artifact restoration + voice conversation in museums
+3. **Multimodal UX Leadership** (40% weight): Voice + Vision + Image Gen + Interrupt + Knowledge Panel — not just a chatbot
+4. **Zero Friction**: URL → camera → talking to AI in < 10 seconds
+5. **Multi-Agent Sophistication**: 4 specialized agents with dual pipeline orchestration
+6. **Production Quality**: Deployed on GCP, responsive mobile UI, proper error handling
+7. **Bonus Points**: Blog (+0.6) + IaC (+0.2) + GDG (+0.2) = full +1.0 bonus
 
 **Common Competitor Weaknesses to Exploit**:
-- Most hackathon entries use 2-3 Gemini features → TimeLens uses 9
+- Most hackathon entries use 2-3 Gemini features → TimeLens uses 7+ core features
 - Most build chatbots → TimeLens is multi-modal (voice + vision + image gen)
 - Most skip mobile optimization → TimeLens is mobile-first
 - Most have text-only output → TimeLens generates images + interleaved content
 - **Most focus on outdoor/general use cases** → TimeLens owns the museum niche with artifact restoration as a unique killer feature no one else has
+- **Most miss bonus points** → TimeLens targets full +1.0 bonus (blog + IaC + GDG)
 
 ---
 
 *Built for the Gemini Live Agent Challenge 2026*
-*Target: Best Overall Agent*
+*Category: Live Agents | Target: Grand Prize*
 *"Every artifact has a story. TimeLens lets you hear it."*
