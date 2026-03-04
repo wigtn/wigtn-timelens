@@ -31,6 +31,7 @@
 Museums hold humanity's greatest treasures — yet the visitor experience is fundamentally broken. A tourist stands before a 3,000-year-old Egyptian sarcophagus, reads a 50-word placard, and moves on. A student stares at a cracked Greek vase, unable to imagine it whole. The gap between *seeing* and *understanding* is vast:
 
 - **Information Access Gap**: 73% of museum visitors leave without understanding the historical significance of what they saw (AAM Survey 2024). Placards are too short; audio guides are rigid and outdated
+- **Audio Guide Linearity Problem**: Traditional audio guides force users to listen from start to finish. To answer a single question like "When was this made?", you must sit through 3 minutes of narration. Text can be scanned; audio cannot — there is no way to quickly jump to the key facts you care about
 - **Imagination Gap**: Broken artifacts, faded paintings, damaged sculptures — visitors cannot visualize what these treasures looked like when they were new. A shattered pottery fragment was once a vibrant ceremonial vessel; a weathered marble statue was once painted in vivid colors
 - **Context Gap**: Artifacts are displayed in isolation. Visitors don't understand the civilization, the daily life, or the story behind the object in front of them
 - **Discovery Gap**: Museums and nearby cultural sites go unnoticed; visitors miss 60% of heritage within 1km radius
@@ -40,7 +41,7 @@ Museums hold humanity's greatest treasures — yet the visitor experience is fun
 
 **TimeLens** is an AI-powered museum and cultural heritage companion that transforms passive viewing into an interactive, multi-sensory exploration. Using Gemini's cutting-edge AI capabilities, TimeLens delivers:
 
-1. **Real-time AI Curator** — Point your camera at any museum artifact, painting, or sculpture; receive instant voice narration with the depth of a world-class museum docent
+1. **Real-time AI Curator** — Point your camera at any museum artifact, painting, or sculpture; receive instant voice narration with the depth of a world-class museum docent. Beyond audio alone, an **Interactive Knowledge Panel** displays key information visually in a chat-like UI — grasp "era, purpose, key facts" in 3 seconds without listening to 3 minutes of narration
 2. **Artifact Restoration** — See damaged, broken, or faded artifacts restored to their original condition through AI-generated imagery with interactive before/after comparison (broken pottery → complete vessel, faded fresco → vibrant original)
 3. **Nearby Discovery** — GPS-powered exploration of surrounding museums and cultural heritage sites
 4. **Museum Diary** — Auto-generated illustrated journal combining your exhibit photos, AI insights, and restored artifact imagery
@@ -61,7 +62,7 @@ Museums hold humanity's greatest treasures — yet the visitor experience is fun
 | Google Arts & Culture | Pre-curated content | No real-time interaction, no user-camera input, limited to partnered museums | Real-time vision + voice conversation at any museum |
 | Smartify | QR/barcode scan | Requires museum partnership, only works on labeled exhibits | Works on any artifact, zero museum setup needed |
 | Generic ChatGPT + Camera | Text chat with photo upload | No streaming, high latency, no voice, no artifact restoration | Sub-second voice + artifact restoration imagery |
-| Traditional Audio Guide | Pre-recorded narration | Fixed script, no follow-up questions, no visual enhancement | Dynamic conversation with interrupts + visual artifact restoration |
+| Traditional Audio Guide | Pre-recorded narration | Fixed script, no follow-up questions, no visual enhancement, **cannot skip to key facts — must listen start-to-finish** | Dynamic conversation with interrupts + visual artifact restoration + **chat-style knowledge panel for instant text access to key information** |
 | **No competitor** | Artifact restoration | No existing product restores damaged artifacts visually in real-time | **Unique: broken → complete, faded → vibrant via AI image gen** |
 
 ### 1.5 Track Strategy: Best Overall Agent
@@ -84,6 +85,7 @@ The "Best Overall Agent" track prioritizes:
 |---|---|---|
 | US-01 | As a Museum Visitor, I want to point my phone at a museum artifact and receive an immediate voice explanation so I can learn without reading tiny placards | P0 |
 | US-02 | As a Museum Visitor, I want to ask follow-up questions mid-narration (interrupt) like "What was this used for?" or "How old is this?" so I can explore my curiosity | P0 |
+| US-12 | As a Museum Visitor, I want to **instantly see key information (era, purpose, significance) as text** without listening to the entire audio guide from start to finish — so I can quickly scan the essentials and dive deeper only into topics I care about | P0 |
 | US-03 | As a Museum Visitor, I want to see what a damaged or incomplete artifact looked like when it was new (e.g., broken pottery → complete vessel, faded painting → original colors, headless statue → full figure) | P0 |
 | US-04 | As a Museum Visitor, I want to discover nearby museums and cultural sites I might have missed so I can maximize my trip | P1 |
 | US-05 | As a Museum Visitor, I want a museum diary auto-generated from my visit with artifact photos and AI insights so I can share and remember the experience | P1 |
@@ -124,6 +126,15 @@ Feature: Real-time Museum Artifact Recognition and Exploration
     Then the agent stops current narration within 500ms
     And responds to the follow-up question with culturally rich context
     And resumes contextual awareness of the original artifact
+
+  Scenario: User quickly scans key information (Interactive Knowledge Panel)
+    Given the user has pointed the camera at a museum artifact
+    And the Curator Agent has identified the artifact
+    Then the UI immediately displays a summary card (name, era, one-line key description)
+    And voice narration begins simultaneously, but the user can grasp key facts via text within 3 seconds
+    When the user taps the "Purpose" topic on the summary card
+    Then a detailed explanation for that topic expands in a chat-style format
+    And the user can explore information at their own depth without listening to the full audio narration
 
   Scenario: User requests artifact restoration
     Given the user is viewing a damaged artifact through the camera
@@ -178,6 +189,7 @@ Feature: Real-time Museum Artifact Recognition and Exploration
 | ID | Requirement | Gemini Features Used |
 |---|---|---|
 | FR-01 | **Live Voice Conversation**: Bidirectional audio streaming between user and Curator Agent via Gemini Live API | Live API, Native Audio |
+| FR-01a | **Interactive Knowledge Panel**: Alongside voice narration, display key information visually in a chat-style text UI. On artifact recognition, immediately show a **summary card** (name, era, one-line description) so users can grasp essentials in 3 seconds. Users can tap specific topics to expand into deeper chat-based conversation on that subject only. Solves the audio guide linearity problem by giving users non-linear, scannable access to information | Live API, Native Audio |
 | FR-02 | **Real-time Vision Recognition**: Continuous camera frame analysis for museum artifact identification (pottery, sculptures, paintings, weapons, jewelry, inscriptions, textiles) and outdoor monument recognition | Live API, Vision |
 | FR-03 | **Search Grounding**: All factual responses verified against Google Search for accuracy | Google Search Grounding |
 | FR-04 | **Voice Interrupt**: User can interrupt AI narration at any point; agent responds to new input within 500ms | Live API |
@@ -407,6 +419,12 @@ Live API Session                          REST API
     ("This amphora would have held wine at a symposium in 5th-century Athens...")
   - Support natural conversation with follow-up questions
   - Speak in the user's language (auto-detect or user-specified)
+  - On artifact recognition, immediately generate a structured summary card:
+    {name, era, civilization, one-line description, 3 key topics}
+    — displayed as text in the UI alongside voice narration so users can
+    instantly grasp key facts without listening to the full audio
+  - Display voice narration content simultaneously as chat-style text
+  - When user taps a specific topic, expand into deeper conversation on that topic only
   - When user requests restoration/reconstruction, call generate_restoration tool
   - When user asks about nearby museums/sites, call discover_nearby tool
   ```
@@ -1044,6 +1062,7 @@ timelens/
 │   │   ├── before-after-slider.tsx   # Time reconstruction comparison
 │   │   ├── nearby-sites.tsx          # Discovery results cards
 │   │   ├── diary-viewer.tsx          # Diary rendering
+│   │   ├── knowledge-panel.tsx       # Interactive Knowledge Panel (summary card + chat-style details)
 │   │   ├── transcript.tsx            # Real-time transcript overlay
 │   │   ├── agent-indicator.tsx       # Shows active agent
 │   │   └── ui/                       # shadcn/ui components
