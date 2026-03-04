@@ -465,7 +465,9 @@ Live API Session                          REST API
   - "Show me the original" / "What did this look like new" / "Restore this" / restoration-related → Restoration
   - "What museums are nearby" / "Other sites" / location-related → Discovery
   - "Create diary" / "Summarize my visit" / "Museum diary" → Diary
-- **Implementation**: ADK `Agent` with routing function calls defined as tools
+- **Implementation**: Dual-mode orchestration
+  - **Live mode (primary)**: Live API system prompt + Function Calling handles routing directly. No separate ADK layer (Part 1 `tools.ts`)
+  - **Text fallback mode**: ADK `LlmAgent`-based Orchestrator handles routing (Part 2 `agents/orchestrator.ts`)
 
 **Curator Agent**
 - **Role**: Primary conversational agent for real-time heritage exploration
@@ -761,9 +763,9 @@ Day   Phase                    Deliverables                               Risk
                                Google Search Grounding integrated,
                                Curator Agent system prompt tuned
 
- 4    Multi-Agent Setup        ADK Orchestrator + Agent routing,          HIGH
-                               Function Calling Bridge between
-                               Pipeline 1 and Pipeline 2
+ 4    Multi-Agent Setup        Live API Function Calling routing           HIGH
+                               (primary) + ADK text fallback
+                               Orchestrator, Pipeline 1↔2 bridge
 
  5    Artifact Restoration     Restoration Agent, Gemini 2.5 Flash        MED
                                Image Gen, Before/After slider UI,

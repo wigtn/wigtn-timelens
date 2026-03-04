@@ -1,0 +1,39 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'cd \"$PROJECT_DIR\" && if [ -f node_modules/.bin/tsc ]; then OUT=$(npx tsc --noEmit 2>&1); if [ $? -ne 0 ]; then echo \"Ralph VERIFY FAILED — TypeScript errors. Fix before finishing:\" >&2; echo \"$OUT\" | head -30 >&2; exit 2; fi; fi'",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'INPUT=$(cat); FILE=$(echo \"$INPUT\" | jq -r \".tool_input.file_path // empty\"); if [ -z \"$FILE\" ] || ! echo \"$FILE\" | grep -qE \"\\.(tsx?|jsx?)$\"; then exit 0; fi; cd \"$PROJECT_DIR\"; if [ -x node_modules/.bin/prettier ]; then npx prettier --write \"$FILE\" 2>/dev/null; fi'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'cd \"$PROJECT_DIR\"; echo \"=== TIMELENS SESSION CONTEXT ===\"; if [ -f PROGRESS.md ]; then cat PROGRESS.md; fi; echo \"--- GIT ---\"; git status --short 2>/dev/null; git log --oneline -5 2>/dev/null; echo \"=== END ===\"'"
+          }
+        ]
+      }
+    ]
+  }
+}

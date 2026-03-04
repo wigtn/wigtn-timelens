@@ -465,7 +465,9 @@ Live API 세션                             REST API
   - "원래 모습 보여줘" / "새것이었을 때 어떻게 생겼어" / "복원해줘" / 복원 관련 → Restoration
   - "근처에 박물관 있어" / "다른 유적지" / 위치 관련 → Discovery
   - "다이어리 만들어줘" / "방문 요약해줘" / "박물관 다이어리" → Diary
-- **구현**: 라우팅 함수 호출을 도구로 정의한 ADK `Agent`
+- **구현**: 듀얼 모드 오케스트레이션
+  - **Live 모드 (메인)**: Live API 시스템 프롬프트 + Function Calling이 직접 라우팅 수행. 별도 ADK 레이어 없음 (Part 1 `tools.ts`)
+  - **텍스트 폴백 모드**: ADK `LlmAgent` 기반 Orchestrator가 라우팅 (Part 2 `agents/orchestrator.ts`)
 
 **Curator Agent**
 - **역할**: 실시간 유산 탐험을 위한 주요 대화 에이전트
@@ -758,9 +760,9 @@ interface DiaryEntry {
                                Google Search Grounding 통합,
                                Curator Agent 시스템 프롬프트 튜닝
 
- 4    멀티에이전트 셋업        ADK Orchestrator + Agent 라우팅,           HIGH
-                               Function Calling Bridge
-                               (파이프라인 1 → 파이프라인 2)
+ 4    멀티에이전트 셋업        Live API Function Calling 라우팅            HIGH
+                               (메인) + ADK 텍스트 폴백 Orchestrator,
+                               파이프라인 1↔2 브릿지
 
  5    유물 복원                Restoration Agent, Gemini 2.5 Flash       MED
                                이미지 생성, Before/After 슬라이더 UI,
