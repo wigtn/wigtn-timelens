@@ -101,7 +101,8 @@ export default function KnowledgePanel({
       style={{ paddingBottom: '80px' }}
     >
       <div
-        className={`bg-gray-900/95 backdrop-blur-xl rounded-t-3xl overflow-hidden
+        className={`bg-gray-900/95 backdrop-blur-xl rounded-t-3xl overflow-hidden border-t border-white/[0.08]
+          shadow-[0_-4px_40px_rgba(0,0,0,0.5)]
           transition-all ${isDragging ? 'duration-0' : 'duration-300 ease-out'}`}
         style={{
           height: isDragging
@@ -115,8 +116,8 @@ export default function KnowledgePanel({
         onClick={handleClick}
       >
         {/* Drag handle */}
-        <div className="flex justify-center py-2">
-          <div className="w-10 h-1 rounded-full bg-gray-600" />
+        <div className="flex justify-center py-3">
+          <div className="w-9 h-1 rounded-full bg-gray-500/60" />
         </div>
 
         {state !== 'closed' && (

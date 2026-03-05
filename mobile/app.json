@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "TimeLens",
+    "slug": "timelens",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "timelens",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0A"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.timelens.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "TimeLens uses the camera to identify artifacts and cultural heritage in real-time.",
+        "NSMicrophoneUsageDescription": "TimeLens uses the microphone for voice conversation with your AI curator.",
+        "UIBackgroundModes": ["audio"]
+      }
+    },
+    "android": {
+      "package": "com.timelens.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0A0A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png"
+      },
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "TimeLens uses the camera to identify artifacts and cultural heritage."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "TimeLens uses the microphone for voice conversation with your AI curator."
+        }
+      ]
+    ]
+  }
+}

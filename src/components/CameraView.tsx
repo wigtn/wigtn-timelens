@@ -90,12 +90,14 @@ const CameraView = forwardRef<CameraViewRef, CameraViewProps>(function CameraVie
       />
 
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-          <p className="text-gray-400 text-center px-8">
-            카메라를 사용할 수 없습니다
-            <br />
-            <span className="text-sm">{error}</span>
-          </p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-black">
+          <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6">
+            <div className="w-10 h-10 rounded-full border-2 border-gray-600 flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-gray-600" />
+            </div>
+          </div>
+          <p className="text-gray-300 text-center font-medium">카메라를 사용할 수 없습니다</p>
+          <p className="text-gray-500 text-sm text-center mt-2 px-8 leading-relaxed">{error}</p>
         </div>
       )}
 

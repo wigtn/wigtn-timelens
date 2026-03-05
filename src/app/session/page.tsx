@@ -189,15 +189,50 @@ export default function MainPage() {
         )}
       </KnowledgePanel>
 
-      {/* Layer 3: Action bar */}
+      {/* Layer 3: Connection status */}
+      {!isConnected && permissionsGranted && (
+        <div className="absolute top-safe-top left-0 right-0 z-30 flex justify-center pt-4">
+          <div className="flex items-center gap-2 px-4 py-2 bg-black/70 backdrop-blur-md rounded-full">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-xs text-gray-300">연결 중...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Layer 4: Action bar */}
       <div className="absolute bottom-0 left-0 right-0 z-30 pb-safe-bottom">
-        <div className="flex items-center justify-around px-6 py-3 bg-black/60 backdrop-blur-md">
+        {/* Fallback text input */}
+        {isFallbackMode && (
+          <div className="flex items-center gap-2 px-4 pb-3">
+            <input
+              type="text"
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
+              placeholder="메시지를 입력하세요..."
+              className="flex-1 px-4 py-3 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm
+                         placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-timelens-gold/40
+                         border border-white/10"
+            />
+            <button
+              onClick={handleTextSubmit}
+              className="px-5 py-3 bg-timelens-gold text-black rounded-full font-medium text-sm
+                         active:scale-95 transition-transform"
+            >
+              전송
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-center justify-around px-6 py-3 bg-gradient-to-t from-black/80 to-black/40 backdrop-blur-md">
           {/* Mic toggle */}
           <button
             onClick={handleMicToggle}
             className={cn(
-              'w-14 h-14 rounded-full flex items-center justify-center transition-colors',
-              isMicOn ? 'bg-white text-black' : 'bg-red-500 text-white',
+              'w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200',
+              isMicOn
+                ? 'bg-white/15 text-white border border-white/20 hover:bg-white/25'
+                : 'bg-red-500/90 text-white shadow-lg shadow-red-500/30',
             )}
             aria-label={isMicOn ? '마이크 끄기' : '마이크 켜기'}
           >
@@ -207,43 +242,24 @@ export default function MainPage() {
           {/* Capture */}
           <button
             onClick={handleCapture}
-            className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center
+            className="relative w-[72px] h-[72px] rounded-full flex items-center justify-center
                        active:scale-95 transition-transform"
             aria-label="사진 캡처"
           >
-            <div className="w-12 h-12 rounded-full bg-white" />
+            <div className="absolute inset-0 rounded-full border-[3px] border-white/80" />
+            <div className="w-[58px] h-[58px] rounded-full bg-white hover:bg-gray-100 transition-colors" />
           </button>
 
           {/* Diary */}
           <button
             onClick={() => sendTextMessage('다이어리 만들어줘')}
-            className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center"
+            className="w-14 h-14 rounded-full bg-white/15 border border-white/20 flex items-center justify-center
+                       hover:bg-white/25 transition-colors"
             aria-label="다이어리"
           >
-            <BookOpen className="w-6 h-6 text-white" />
+            <BookOpen className="w-5 h-5 text-white" />
           </button>
         </div>
-
-        {/* Fallback text input */}
-        {isFallbackMode && (
-          <div className="flex items-center gap-2 px-4 pb-2">
-            <input
-              type="text"
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
-              placeholder="메시지를 입력하세요..."
-              className="flex-1 px-4 py-3 bg-white/10 rounded-full text-white
-                         placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-white/30"
-            />
-            <button
-              onClick={handleTextSubmit}
-              className="px-4 py-3 bg-white text-black rounded-full font-medium"
-            >
-              전송
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

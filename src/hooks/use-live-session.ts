@@ -286,9 +286,14 @@ export function useLiveSession(): UseLiveSessionReturn {
     languageRef.current = language;
 
     try {
-      // 1. Firebase 익명 인증
-      const user = await signInAnonymous();
-      userIdRef.current = user.uid;
+      // 1. Firebase 익명 인증 (미설정 시 건너뜀)
+      try {
+        const user = await signInAnonymous();
+        userIdRef.current = user.uid;
+      } catch (authErr) {
+        console.warn('[useLiveSession] Firebase auth skipped:', authErr);
+        userIdRef.current = `anon-${Date.now()}`;
+      }
 
       // 2. 서버에서 Ephemeral Token 획득
       const res = await fetch('/api/session', {
@@ -303,8 +308,12 @@ export function useLiveSession(): UseLiveSessionReturn {
       const { sessionId, wsUrl: token } = json.data;
       sessionIdRef.current = sessionId;
 
-      // 3. Firestore에 세션 문서 생성 (후속 addVisit이 의존하므로 await)
-      await createSession(sessionId, { userId: userIdRef.current, language });
+      // 3. Firestore에 세션 문서 생성 (미설정 시 건너뜀)
+      try {
+        await createSession(sessionId, { userId: userIdRef.current, language });
+      } catch (fsErr) {
+        console.warn('[useLiveSession] Firestore session skipped:', fsErr);
+      }
 
       // 4. 이벤트 핸들러 + LiveSession 생성
       const refs: SessionRefs = {

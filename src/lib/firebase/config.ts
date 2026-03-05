@@ -14,6 +14,11 @@ const firebaseConfig = {
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
 };
 
+/** Firebase가 설정되어 있는지 확인 */
+export function isFirebaseConfigured(): boolean {
+  return !!firebaseConfig.apiKey && !!firebaseConfig.projectId;
+}
+
 /**
  * Firebase 앱 인스턴스 (싱글턴)
  * Next.js의 핫 리로드에서 중복 초기화 방지
@@ -32,6 +37,9 @@ let _auth: Auth | null = null;
 /** Firebase 앱 인스턴스 (lazy) */
 export function getFirebaseAppInstance(): FirebaseApp {
   if (!_app) {
+    if (!isFirebaseConfigured()) {
+      throw new Error('Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_API_KEY and NEXT_PUBLIC_FIREBASE_PROJECT_ID in .env.local');
+    }
     _app = getFirebaseApp();
   }
   return _app;
@@ -52,9 +60,3 @@ export function getAuthInstance(): Auth {
   }
   return _auth;
 }
-
-// 하위 호환: 기존 코드에서 직접 참조 가능
-export const db: Firestore = getDb();
-export const auth: Auth = getAuthInstance();
-
-export default getFirebaseAppInstance();

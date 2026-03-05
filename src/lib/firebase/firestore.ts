@@ -22,7 +22,7 @@ import {
   type DocumentData,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
-import { db } from './config';
+import { getDb } from './config';
 import type { SessionDoc, VisitDoc, DiaryDoc } from '@/types/models';
 
 // ──────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ export async function createSession(
     expiresAt,
   };
 
-  await setDoc(doc(db, 'sessions', sessionId), sessionDoc);
+  await setDoc(doc(getDb(), 'sessions', sessionId), sessionDoc);
   return sessionDoc;
 }
 
@@ -89,7 +89,7 @@ export async function createSession(
 export async function getSession(
   sessionId: string
 ): Promise<SessionDoc | null> {
-  const ref = doc(db, 'sessions', sessionId).withConverter(sessionConverter);
+  const ref = doc(getDb(), 'sessions', sessionId).withConverter(sessionConverter);
   const snapshot = await getDoc(ref);
   if (!snapshot.exists()) return null;
   return snapshot.data();
@@ -107,7 +107,7 @@ export async function updateSession(
     >
   >
 ): Promise<void> {
-  await updateDoc(doc(db, 'sessions', sessionId), {
+  await updateDoc(doc(getDb(), 'sessions', sessionId), {
     ...data,
     updatedAt: Timestamp.now(),
   });
@@ -120,7 +120,7 @@ export async function getActiveSession(
   userId: string
 ): Promise<SessionDoc | null> {
   const q = query(
-    collection(db, 'sessions').withConverter(sessionConverter),
+    collection(getDb(), 'sessions').withConverter(sessionConverter),
     where('userId', '==', userId),
     where('status', '==', 'active'),
     orderBy('createdAt', 'desc'),
@@ -154,7 +154,7 @@ export async function addVisit(
   };
 
   await setDoc(
-    doc(db, 'sessions', sessionId, 'visits', visitId),
+    doc(getDb(), 'sessions', sessionId, 'visits', visitId),
     visitDoc
   );
   return visitDoc;
@@ -167,7 +167,7 @@ export async function getVisits(
   sessionId: string
 ): Promise<VisitDoc[]> {
   const q = query(
-    collection(db, 'sessions', sessionId, 'visits').withConverter(visitConverter),
+    collection(getDb(), 'sessions', sessionId, 'visits').withConverter(visitConverter),
     orderBy('recognizedAt', 'asc')
   );
   const snapshot = await getDocs(q);
@@ -183,7 +183,7 @@ export async function updateVisit(
   data: Partial<Pick<VisitDoc, 'restorationImageUrl' | 'userPhotoUrl' | 'conversationSummary'>>
 ): Promise<void> {
   await updateDoc(
-    doc(db, 'sessions', sessionId, 'visits', visitId),
+    doc(getDb(), 'sessions', sessionId, 'visits', visitId),
     data
   );
 }
@@ -196,7 +196,7 @@ export async function getVisitCount(
 ): Promise<number> {
   const { getCountFromServer } = await import('firebase/firestore');
   const snapshot = await getCountFromServer(
-    collection(db, 'sessions', sessionId, 'visits')
+    collection(getDb(), 'sessions', sessionId, 'visits')
   );
   return snapshot.data().count;
 }
@@ -218,7 +218,7 @@ export async function createDiary(
     createdAt: Timestamp.now(),
   };
 
-  await setDoc(doc(db, 'diaries', diaryId), diaryDoc);
+  await setDoc(doc(getDb(), 'diaries', diaryId), diaryDoc);
   return diaryDoc;
 }
 
@@ -228,7 +228,7 @@ export async function createDiary(
 export async function getDiary(
   diaryId: string
 ): Promise<DiaryDoc | null> {
-  const ref = doc(db, 'diaries', diaryId).withConverter(diaryConverter);
+  const ref = doc(getDb(), 'diaries', diaryId).withConverter(diaryConverter);
   const snapshot = await getDoc(ref);
   if (!snapshot.exists()) return null;
   return snapshot.data();
@@ -241,7 +241,7 @@ export async function getDiaryByShareToken(
   shareToken: string
 ): Promise<DiaryDoc | null> {
   const q = query(
-    collection(db, 'diaries').withConverter(diaryConverter),
+    collection(getDb(), 'diaries').withConverter(diaryConverter),
     where('shareToken', '==', shareToken),
     limit(1)
   );
@@ -257,7 +257,7 @@ export async function getUserDiaries(
   userId: string
 ): Promise<DiaryDoc[]> {
   const q = query(
-    collection(db, 'diaries').withConverter(diaryConverter),
+    collection(getDb(), 'diaries').withConverter(diaryConverter),
     where('userId', '==', userId),
     orderBy('createdAt', 'desc')
   );
@@ -272,7 +272,7 @@ export async function setDiaryShareToken(
   diaryId: string,
   shareToken: string
 ): Promise<void> {
-  await updateDoc(doc(db, 'diaries', diaryId), { shareToken });
+  await updateDoc(doc(getDb(), 'diaries', diaryId), { shareToken });
 }
 
 // ──────────────────────────────────────────────────────────
@@ -284,7 +284,7 @@ export async function setDiaryShareToken(
  * phantom collection '_'에 doc ref를 생성하여 auto-ID만 추출. 실제 데이터는 기록되지 않음.
  */
 export function generateId(): string {
-  return doc(collection(db, '_')).id;
+  return doc(collection(getDb(), '_')).id;
 }
 
 /**
