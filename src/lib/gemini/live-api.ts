@@ -11,6 +11,7 @@ import type {
   ArtifactSummary,
   SessionState,
 } from '@/types/live-session';
+import type { DiaryVisitInput } from '@/types/diary';
 import type { AudioState, SessionStatus, AgentType, AppError } from '@/types/common';
 import { LIVE_API_TOOLS, getSystemInstruction } from './tools';
 
@@ -31,6 +32,8 @@ export class LiveSession {
   private resumeHandle: string | null = null;
   private pendingToolCalls: Map<string, { name: string; startTime: number }> = new Map();
   private onAudioData: ((base64: string) => void) | null = null;
+  private userId = '';
+  private visits: DiaryVisitInput[] = [];
 
   constructor(events: LiveSessionEvents) {
     this.events = events;
@@ -91,6 +94,7 @@ export class LiveSession {
       this.session = null;
     }
     this.ai = null;
+    this.visits = [];
     this.updateStatus('disconnected');
   }
 
@@ -158,6 +162,14 @@ export class LiveSession {
 
   setAudioDataHandler(handler: (base64: string) => void): void {
     this.onAudioData = handler;
+  }
+
+  setUserId(uid: string): void {
+    this.userId = uid;
+  }
+
+  addVisit(visit: DiaryVisitInput): void {
+    this.visits.push(visit);
   }
 
   // --- Private handlers ---
@@ -411,7 +423,11 @@ export class LiveSession {
       const response = await fetch('/api/diary/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: fc.args.session_id || this.state.sessionId }),
+        body: JSON.stringify({
+          sessionId: fc.args.session_id || this.state.sessionId,
+          userId: this.userId,
+          visits: this.visits,
+        }),
       });
       const result = await response.json();
 
@@ -423,6 +439,8 @@ export class LiveSession {
             diaryId: result.diaryId,
             title: result.diary?.title || 'Museum Diary',
             entryCount: result.diary?.entries?.length || 0,
+            entries: result.diary?.entries,
+            shareToken: result.diary?.shareToken,
           },
         });
         this.session?.sendToolResponse({

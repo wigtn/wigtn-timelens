@@ -145,8 +145,11 @@
 ---
 
 ## Integration & Polish
-- [ ] 전체 `npx tsc --noEmit` 통과
-- [ ] 전체 `npm run lint` 통과
+- [x] 전체 `npx tsc --noEmit` 통과
+- [x] 전체 `npm run lint` 통과
+- [x] Tool Result UI 연결 (onToolResult → RestorationResult/NearbySites/Diary 렌더링)
+- [x] Diary userId 수정 (빈 문자열 → auth uid, 클라이언트사이드 Firestore 저장)
+- [x] Session/Visit 저장 파이프라인 연결 (signInAnonymous → createSession → addVisit)
 - [ ] 모바일 반응형 확인
 - [ ] Lighthouse 성능 체크
 - [ ] Cloud Run 배포 테스트
@@ -167,3 +170,5 @@
 | 2026-03-05 | Part 2 | 17 files | tsc ✅ lint ✅ | 전체 UI 구현 완료 (pages + components + agents + stubs) |
 | 2026-03-05 | Part 3 | 5 files | tsc ✅ lint ✅ | Restoration 완료 (Flash Image + REST API + Before/After Slider) |
 | 2026-03-05 | Part 4 | 13 files | tsc ✅ lint ✅ | Discovery + Diary 완료 (Places API + Gemini interleaved + SSR diary page) |
+| 2026-03-05 | Integration | 3 files | tsc ✅ lint ✅ | Tool Result UI 연결 (onToolResult → 상태 → 컴포넌트 렌더링) |
+| 2026-03-05 | Integration | 8 files | tsc ✅ lint ✅ | Tool Result UI + Diary userId + Session/Visit 파이프라인 + Zod 검증 + 이벤트 팩토리 분리 + Geolocation 연동 + 계약 동기화 |

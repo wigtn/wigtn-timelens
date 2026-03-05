@@ -8,6 +8,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Mic, MicOff, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PanelState, AgentType } from '@/types/common';
@@ -18,6 +19,8 @@ import KnowledgePanel from '@/components/KnowledgePanel';
 import AgentIndicator from '@/components/AgentIndicator';
 import AudioVisualizer from '@/components/AudioVisualizer';
 import PermissionGate from '@/components/PermissionGate';
+import { RestorationResult } from '@/components/RestorationResult';
+import NearbySites from '@/components/NearbySites';
 
 function getAgentSwitchReason(agent: AgentType): string {
   switch (agent) {
@@ -46,7 +49,12 @@ export default function MainPage() {
     transcript,
     audioState,
     activeAgent,
+    restorationState,
+    discoverySites,
+    diaryResult,
   } = useLiveSession();
+
+  const router = useRouter();
 
   // Local UI state
   const [panelState, setPanelState] = useState<PanelState>('closed');
@@ -90,6 +98,20 @@ export default function MainPage() {
       return () => clearTimeout(timer);
     }
   }, [activeAgent]);
+
+  // Auto-expand panel when tool results arrive
+  useEffect(() => {
+    if (restorationState.status === 'ready' || discoverySites.length > 0) {
+      setPanelState('fullscreen');
+    }
+  }, [restorationState.status, discoverySites.length]);
+
+  // Diary result → navigate to diary page
+  useEffect(() => {
+    if (diaryResult) {
+      router.push(`/diary/${diaryResult.diaryId}`);
+    }
+  }, [diaryResult, router]);
 
   // Action handlers
   const handleMicToggle = useCallback(() => {
@@ -151,7 +173,21 @@ export default function MainPage() {
         transcript={transcript}
         onStateChange={setPanelState}
         onTopicTap={handleTopicTap}
-      />
+      >
+        {/* Restoration Result */}
+        {restorationState.status !== 'idle' && (
+          <div className="mt-4">
+            <RestorationResult state={restorationState} />
+          </div>
+        )}
+
+        {/* Discovery Sites */}
+        {discoverySites.length > 0 && (
+          <div className="mt-4">
+            <NearbySites sites={discoverySites} />
+          </div>
+        )}
+      </KnowledgePanel>
 
       {/* Layer 3: Action bar */}
       <div className="absolute bottom-0 left-0 right-0 z-30 pb-safe-bottom">

@@ -251,6 +251,13 @@ export interface UseLiveSessionReturn {
   transcript: TranscriptChunk[];        // 채팅 히스토리
   audioState: AudioState;
   activeAgent: AgentType;
+
+  // Tool Result UI 연결
+  toolResult: ToolResultData | null;
+  restorationState: RestorationUIState;
+  discoverySites: NearbyPlace[];
+  diaryResult: { diaryId: string; title: string } | null;
+  clearToolResult: () => void;
 }
 
 export interface TranscriptChunk {
@@ -409,9 +416,21 @@ export interface DiaryToolCall {
   };
 }
 
+// --- 다이어리 생성 시 방문 데이터 (VisitDoc 경량 버전) ---
+export interface DiaryVisitInput {
+  itemName: string;
+  venueName?: string;
+  era?: string;
+  civilization?: string;
+  conversationSummary: string;
+}
+
 // --- REST API: POST /api/diary/generate ---
+// 클라이언트가 visits 데이터를 직접 전달 (서버는 Firestore에 접근하지 않음)
 export interface DiaryGenerateRequest {
   sessionId: string;
+  userId: string;                        // Firebase Auth uid
+  visits: DiaryVisitInput[];             // 방문 기록 (Gemini 프롬프트 생성용)
 }
 
 export interface DiaryGenerateResponse {
@@ -436,11 +455,14 @@ export interface DiaryEntry {
 }
 
 // --- Tool Result ---
+// entries/shareToken은 클라이언트 Firestore 저장용 (서버→클라이언트 전달)
 export interface DiaryResult {
   type: 'diary';
   diaryId: string;
   title: string;
   entryCount: number;
+  entries?: DiaryEntry[];                // 클라이언트 Firestore 저장용
+  shareToken?: string;                   // 공유 링크용
 }
 
 // --- Diary UI 상태 ---

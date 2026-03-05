@@ -12,9 +12,20 @@ export interface DiaryToolCall {
   };
 }
 
+// --- 다이어리 생성 시 방문 데이터 (Firestore VisitDoc의 경량 버전) ---
+export interface DiaryVisitInput {
+  itemName: string;
+  venueName?: string;
+  era?: string;
+  civilization?: string;
+  conversationSummary: string;
+}
+
 // --- REST API: POST /api/diary/generate ---
 export interface DiaryGenerateRequest {
   sessionId: string;
+  userId: string;
+  visits: DiaryVisitInput[];
 }
 
 export interface DiaryGenerateResponse {
@@ -44,6 +55,8 @@ export interface DiaryResult {
   diaryId: string;
   title: string;
   entryCount: number;
+  entries?: DiaryEntry[];
+  shareToken?: string;
 }
 
 // --- Diary UI 상태 ---

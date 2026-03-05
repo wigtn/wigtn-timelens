@@ -6,12 +6,14 @@
 // ============================================================
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { LiveSession, type LiveSessionConfig } from '@/lib/gemini/live-api';
 import { createAudioCapture, type AudioCapture } from '@/lib/audio/capture';
 import { createAudioPlayback, type AudioPlayback } from '@/lib/audio/playback';
 import { createCameraCapture, type CameraCapture } from '@/lib/camera/capture';
 import { createReconnectManager, type ReconnectManager } from '@/lib/ws/manager';
+import { signInAnonymous } from '@/lib/firebase/auth';
+import { createSession, addVisit, createDiary, generateId, createGeoPoint } from '@/lib/firebase/firestore';
 import type {
   UseLiveSessionReturn,
   SessionConfig,
@@ -19,8 +21,214 @@ import type {
   TranscriptChunk,
   LiveSessionEvents,
   ArtifactSummary,
+  ToolResultData,
 } from '@/types/live-session';
-import type { AudioState, AgentType } from '@/types/common';
+import type { RestorationUIState } from '@/types/restoration';
+import type { NearbyPlace } from '@/types/discovery';
+import type { AudioState, AgentType, Civilization } from '@/types/common';
+
+// ── 유틸리티 ────────────────────────────────────────────────
+
+const VALID_CIVILIZATIONS: ReadonlySet<string> = new Set<Civilization>([
+  'Greek', 'Roman', 'Egyptian', 'Mesopotamian', 'Chinese',
+  'Japanese', 'Korean', 'Indian', 'Persian', 'Mayan', 'Other',
+]);
+
+function toCivilization(value: string): Civilization {
+  return VALID_CIVILIZATIONS.has(value) ? (value as Civilization) : 'Other';
+}
+
+// ── 이벤트 핸들러 팩토리 ────────────────────────────────────
+
+interface SessionRefs {
+  liveSession: React.RefObject<LiveSession | null>;
+  sessionId: React.RefObject<string | null>;
+  userId: React.RefObject<string>;
+  language: React.RefObject<string>;
+  currentArtifact: React.RefObject<ArtifactSummary | null>;
+  reconnect: React.RefObject<ReconnectManager | null>;
+  geoCoords: React.RefObject<{ lat: number; lng: number }>;
+}
+
+interface SessionSetters {
+  setSessionState: React.Dispatch<React.SetStateAction<SessionState>>;
+  setTranscript: React.Dispatch<React.SetStateAction<TranscriptChunk[]>>;
+  setCurrentArtifact: React.Dispatch<React.SetStateAction<ArtifactSummary | null>>;
+  setAudioState: React.Dispatch<React.SetStateAction<AudioState>>;
+  setActiveAgent: React.Dispatch<React.SetStateAction<AgentType>>;
+  setToolResult: React.Dispatch<React.SetStateAction<ToolResultData | null>>;
+  setRestorationState: React.Dispatch<React.SetStateAction<RestorationUIState>>;
+  setDiscoverySites: React.Dispatch<React.SetStateAction<NearbyPlace[]>>;
+  setDiaryResult: React.Dispatch<React.SetStateAction<{ diaryId: string; title: string } | null>>;
+}
+
+function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSessionEvents {
+  return {
+    onArtifactRecognized: (summary) => {
+      setters.setCurrentArtifact(summary);
+      refs.currentArtifact.current = summary;
+      setters.setSessionState(prev => ({
+        ...prev,
+        currentArtifact: summary,
+        visitCount: prev.visitCount + 1,
+      }));
+
+      // LiveSession에 경량 visit 추가 (다이어리 생성용)
+      const visitInput = {
+        itemName: summary.name,
+        era: summary.era,
+        civilization: summary.civilization,
+        conversationSummary: summary.oneLiner,
+      };
+      refs.liveSession.current?.addVisit(visitInput);
+
+      // Firestore에 방문 기록 저장
+      if (refs.sessionId.current) {
+        const visitId = generateId();
+        const coords = refs.geoCoords.current;
+        addVisit(refs.sessionId.current, visitId, {
+          itemName: summary.name,
+          location: createGeoPoint(coords.lat, coords.lng),
+          conversationSummary: summary.oneLiner,
+          metadata: {
+            era: summary.era,
+            category: summary.isOutdoor ? 'monument' : 'artifact',
+            civilization: toCivilization(summary.civilization),
+          },
+        }).catch((err) => console.warn('[useLiveSession] addVisit failed:', err));
+      }
+    },
+
+    onTranscript: (data) => {
+      setters.setTranscript(prev => {
+        const last = prev[prev.length - 1];
+        if (last && last.role === 'assistant' && !last.sources) {
+          return [
+            ...prev.slice(0, -1),
+            { ...last, text: last.text + data.delta },
+          ];
+        }
+        return [
+          ...prev,
+          {
+            id: `t-${Date.now()}`,
+            role: 'assistant',
+            text: data.delta,
+            timestamp: Date.now(),
+            sources: data.sources,
+          },
+        ];
+      });
+    },
+
+    onUserSpeech: (data) => {
+      setters.setTranscript(prev => [
+        ...prev,
+        {
+          id: `u-${Date.now()}`,
+          role: 'user',
+          text: data.text,
+          timestamp: Date.now(),
+        },
+      ]);
+    },
+
+    onAgentSwitch: (data) => {
+      setters.setActiveAgent(data.to);
+      setters.setSessionState(prev => ({ ...prev, activeAgent: data.to }));
+
+      if (data.to === 'restoration') {
+        setters.setRestorationState({
+          status: 'loading',
+          progress: 0,
+          artifactName: refs.currentArtifact.current?.name ?? '',
+          era: refs.currentArtifact.current?.era ?? '',
+        });
+      }
+    },
+
+    onAudioStateChange: (state) => {
+      setters.setAudioState(state);
+      setters.setSessionState(prev => ({ ...prev, audioState: state }));
+    },
+
+    onSessionStatusChange: (status) => {
+      setters.setSessionState(prev => ({ ...prev, status }));
+
+      if (status === 'disconnected' && refs.reconnect.current) {
+        refs.reconnect.current.scheduleReconnect(async () => {
+          const resumeRes = await fetch('/api/session/resume', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: refs.sessionId.current }),
+          });
+          const resumeJson = await resumeRes.json();
+          if (!resumeJson.success) throw new Error('Resume failed');
+
+          const resumeHandle = refs.liveSession.current?.getResumeHandle();
+          await refs.liveSession.current?.connect({
+            token: resumeJson.data.wsUrl,
+            language: refs.language.current,
+            sessionId: refs.sessionId.current!,
+            resumeHandle: resumeHandle || undefined,
+          });
+        });
+      }
+    },
+
+    onToolResult: (data) => {
+      setters.setToolResult(data);
+
+      switch (data.tool) {
+        case 'generate_restoration':
+          if (data.result.type === 'restoration') {
+            setters.setRestorationState({ status: 'ready', data: data.result });
+          }
+          break;
+        case 'discover_nearby':
+          if (data.result.type === 'discovery') {
+            setters.setDiscoverySites(data.result.sites);
+          }
+          break;
+        case 'create_diary':
+          if (data.result.type === 'diary') {
+            // 클라이언트에서 Firestore에 다이어리 저장 (auth 컨텍스트 활용)
+            if (data.result.entries && refs.sessionId.current) {
+              createDiary(data.result.diaryId, {
+                sessionId: refs.sessionId.current,
+                userId: refs.userId.current,
+                title: data.result.title,
+                entries: data.result.entries,
+                shareToken: data.result.shareToken,
+              }).catch((err) => console.warn('[useLiveSession] createDiary failed:', err));
+            }
+            setters.setDiaryResult({ diaryId: data.result.diaryId, title: data.result.title });
+          }
+          break;
+      }
+    },
+
+    onTopicDetail: () => {
+      // Topic detail은 transcript에 자동 추가됨
+    },
+
+    onError: (error) => {
+      console.error('[useLiveSession] Error:', error);
+      if (error.code === 'RESTORATION_FAILED') {
+        setters.setRestorationState({
+          status: 'error',
+          error: error.message,
+          retryable: error.action === 'retry',
+        });
+      }
+      if (!error.recoverable) {
+        setters.setSessionState(prev => ({ ...prev, isFallbackMode: true }));
+      }
+    },
+  };
+}
+
+// ── 초기 상태 ───────────────────────────────────────────────
 
 const INITIAL_STATE: SessionState = {
   sessionId: null,
@@ -32,13 +240,21 @@ const INITIAL_STATE: SessionState = {
   isFallbackMode: false,
 };
 
+// ── 메인 훅 ─────────────────────────────────────────────────
+
 export function useLiveSession(): UseLiveSessionReturn {
+  // React 상태
   const [sessionState, setSessionState] = useState<SessionState>(INITIAL_STATE);
   const [transcript, setTranscript] = useState<TranscriptChunk[]>([]);
   const [currentArtifact, setCurrentArtifact] = useState<ArtifactSummary | null>(null);
   const [audioState, setAudioState] = useState<AudioState>('idle');
   const [activeAgent, setActiveAgent] = useState<AgentType>('curator');
+  const [toolResult, setToolResult] = useState<ToolResultData | null>(null);
+  const [restorationState, setRestorationState] = useState<RestorationUIState>({ status: 'idle' });
+  const [discoverySites, setDiscoverySites] = useState<NearbyPlace[]>([]);
+  const [diaryResult, setDiaryResult] = useState<{ diaryId: string; title: string } | null>(null);
 
+  // Refs
   const liveSessionRef = useRef<LiveSession | null>(null);
   const audioCaptureRef = useRef<AudioCapture | null>(null);
   const audioPlaybackRef = useRef<AudioPlayback | null>(null);
@@ -46,13 +262,35 @@ export function useLiveSession(): UseLiveSessionReturn {
   const reconnectRef = useRef<ReconnectManager | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const languageRef = useRef<string>('en');
+  const currentArtifactRef = useRef<ArtifactSummary | null>(null);
+  const userIdRef = useRef<string>('');
+  const geoCoordsRef = useRef<{ lat: number; lng: number }>({ lat: 0, lng: 0 });
+
+  // 브라우저 Geolocation으로 좌표 추적
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        geoCoordsRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      },
+      () => { /* 위치 실패 시 기본값(0,0) 유지 */ },
+      { enableHighAccuracy: true, maximumAge: 60000 },
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
+
+  // ── connect ───────────────────────────────────────────────
 
   const connect = useCallback(async (config: SessionConfig) => {
     const language = config.language;
     languageRef.current = language;
 
     try {
-      // 1. 서버에서 Ephemeral Token 획득
+      // 1. Firebase 익명 인증
+      const user = await signInAnonymous();
+      userIdRef.current = user.uid;
+
+      // 2. 서버에서 Ephemeral Token 획득
       const res = await fetch('/api/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -65,105 +303,36 @@ export function useLiveSession(): UseLiveSessionReturn {
       const { sessionId, wsUrl: token } = json.data;
       sessionIdRef.current = sessionId;
 
-      // 2. LiveSessionEvents 콜백 정의
-      const events: LiveSessionEvents = {
-        onArtifactRecognized: (summary) => {
-          setCurrentArtifact(summary);
-          setSessionState(prev => ({
-            ...prev,
-            currentArtifact: summary,
-            visitCount: prev.visitCount + 1,
-          }));
-        },
-        onTranscript: (data) => {
-          setTranscript(prev => {
-            const last = prev[prev.length - 1];
-            if (last && last.role === 'assistant' && !last.sources) {
-              // 마지막 assistant 청크에 텍스트 추가
-              return [
-                ...prev.slice(0, -1),
-                { ...last, text: last.text + data.delta },
-              ];
-            }
-            return [
-              ...prev,
-              {
-                id: `t-${Date.now()}`,
-                role: 'assistant',
-                text: data.delta,
-                timestamp: Date.now(),
-                sources: data.sources,
-              },
-            ];
-          });
-        },
-        onUserSpeech: (data) => {
-          setTranscript(prev => [
-            ...prev,
-            {
-              id: `u-${Date.now()}`,
-              role: 'user',
-              text: data.text,
-              timestamp: Date.now(),
-            },
-          ]);
-        },
-        onAgentSwitch: (data) => {
-          setActiveAgent(data.to);
-          setSessionState(prev => ({ ...prev, activeAgent: data.to }));
-        },
-        onAudioStateChange: (state) => {
-          setAudioState(state);
-          setSessionState(prev => ({ ...prev, audioState: state }));
-        },
-        onSessionStatusChange: (status) => {
-          setSessionState(prev => ({ ...prev, status }));
+      // 3. Firestore에 세션 문서 생성 (후속 addVisit이 의존하므로 await)
+      await createSession(sessionId, { userId: userIdRef.current, language });
 
-          if (status === 'disconnected' && reconnectRef.current) {
-            reconnectRef.current.scheduleReconnect(async () => {
-              const resumeRes = await fetch('/api/session/resume', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionId: sessionIdRef.current }),
-              });
-              const resumeJson = await resumeRes.json();
-              if (!resumeJson.success) throw new Error('Resume failed');
-
-              const resumeHandle = liveSessionRef.current?.getResumeHandle();
-              await liveSessionRef.current?.connect({
-                token: resumeJson.data.wsUrl,
-                language: languageRef.current,
-                sessionId: sessionIdRef.current!,
-                resumeHandle: resumeHandle || undefined,
-              });
-            });
-          }
-        },
-        onToolResult: () => {
-          // Tool result는 LiveSession 내부에서 처리
-          // UI는 onArtifactRecognized, transcript 등으로 결과를 수신
-        },
-        onTopicDetail: () => {
-          // Topic detail은 transcript에 자동 추가됨
-        },
-        onError: (error) => {
-          console.error('[useLiveSession] Error:', error);
-          if (!error.recoverable) {
-            setSessionState(prev => ({ ...prev, isFallbackMode: true }));
-          }
-        },
+      // 4. 이벤트 핸들러 + LiveSession 생성
+      const refs: SessionRefs = {
+        liveSession: liveSessionRef,
+        sessionId: sessionIdRef,
+        userId: userIdRef,
+        language: languageRef,
+        currentArtifact: currentArtifactRef,
+        reconnect: reconnectRef,
+        geoCoords: geoCoordsRef,
       };
+      const setters: SessionSetters = {
+        setSessionState, setTranscript, setCurrentArtifact,
+        setAudioState, setActiveAgent, setToolResult,
+        setRestorationState, setDiscoverySites, setDiaryResult,
+      };
+      const events = createSessionEvents(refs, setters);
 
-      // 3. LiveSession 생성 + 연결
       const liveSession = new LiveSession(events);
+      liveSession.setUserId(userIdRef.current);
       liveSessionRef.current = liveSession;
 
-      // 4. AudioPlayback 생성
+      // 5. AudioPlayback
       const playback = createAudioPlayback();
       audioPlaybackRef.current = playback;
       liveSession.setAudioDataHandler(playback.enqueue);
 
-      // 5. ReconnectManager 생성
+      // 6. ReconnectManager
       reconnectRef.current = createReconnectManager({
         maxAttempts: 3,
         baseDelayMs: 1000,
@@ -172,25 +341,18 @@ export function useLiveSession(): UseLiveSessionReturn {
           console.log(`[Reconnect] Attempt ${attempt}/${max}`);
           setSessionState(prev => ({ ...prev, status: 'reconnecting' }));
         },
-        onSuccess: () => {
-          console.log('[Reconnect] Success');
-        },
+        onSuccess: () => console.log('[Reconnect] Success'),
         onFailure: () => {
           console.warn('[Reconnect] All attempts failed, switching to fallback');
           setSessionState(prev => ({ ...prev, isFallbackMode: true, status: 'disconnected' }));
         },
       });
 
-      // LiveSession 연결
-      const liveConfig: LiveSessionConfig = {
-        token,
-        language,
-        sessionId,
-        resumeHandle: config.sessionId ? undefined : undefined,
-      };
+      // 7. LiveSession 연결
+      const liveConfig: LiveSessionConfig = { token, language, sessionId };
       await liveSession.connect(liveConfig);
 
-      // 6. AudioCapture 생성 + 시작
+      // 8. AudioCapture
       const audioCapture = createAudioCapture({
         onChunk: (base64Pcm) => liveSessionRef.current?.sendAudio(base64Pcm),
         onLevelChange: () => {},
@@ -198,7 +360,7 @@ export function useLiveSession(): UseLiveSessionReturn {
       audioCaptureRef.current = audioCapture;
       await audioCapture.start();
 
-      // 7. CameraCapture 생성 + 시작 + 프레임 루프
+      // 9. CameraCapture
       const cameraCapture = createCameraCapture();
       cameraCaptureRef.current = cameraCapture;
       await cameraCapture.start();
@@ -206,21 +368,15 @@ export function useLiveSession(): UseLiveSessionReturn {
         liveSessionRef.current?.sendVideoFrame(base64Jpeg);
       });
 
-      // 8. 상태 업데이트
-      setSessionState(prev => ({
-        ...prev,
-        sessionId,
-        status: 'connected',
-      }));
+      // 10. 상태 업데이트
+      setSessionState(prev => ({ ...prev, sessionId, status: 'connected' }));
     } catch (err) {
       console.error('[useLiveSession] Connect failed:', err);
-      setSessionState(prev => ({
-        ...prev,
-        isFallbackMode: true,
-        status: 'disconnected',
-      }));
+      setSessionState(prev => ({ ...prev, isFallbackMode: true, status: 'disconnected' }));
     }
   }, []);
+
+  // ── disconnect ────────────────────────────────────────────
 
   const disconnect = useCallback(() => {
     reconnectRef.current?.cancel();
@@ -239,12 +395,11 @@ export function useLiveSession(): UseLiveSessionReturn {
     setActiveAgent('curator');
   }, []);
 
+  // ── 컨트롤 ───────────────────────────────────────────────
+
   const toggleMic = useCallback((enabled: boolean) => {
-    if (enabled) {
-      audioCaptureRef.current?.unmute();
-    } else {
-      audioCaptureRef.current?.mute();
-    }
+    if (enabled) audioCaptureRef.current?.unmute();
+    else audioCaptureRef.current?.mute();
   }, []);
 
   const toggleCamera = useCallback((enabled: boolean) => {
@@ -270,12 +425,7 @@ export function useLiveSession(): UseLiveSessionReturn {
     liveSessionRef.current?.sendText(text);
     setTranscript(prev => [
       ...prev,
-      {
-        id: `u-${Date.now()}`,
-        role: 'user',
-        text,
-        timestamp: Date.now(),
-      },
+      { id: `u-${Date.now()}`, role: 'user', text, timestamp: Date.now() },
     ]);
   }, []);
 
@@ -283,21 +433,23 @@ export function useLiveSession(): UseLiveSessionReturn {
     liveSessionRef.current?.sendPhoto(imageBase64);
   }, []);
 
+  const clearToolResult = useCallback(() => {
+    setToolResult(null);
+    setRestorationState({ status: 'idle' });
+    setDiscoverySites([]);
+    setDiaryResult(null);
+  }, []);
+
+  // ── 반환 ──────────────────────────────────────────────────
+
   return {
     sessionState,
     isConnected: sessionState.status === 'connected',
     isFallbackMode: sessionState.isFallbackMode,
-    connect,
-    disconnect,
-    toggleMic,
-    toggleCamera,
-    interrupt,
-    requestTopicDetail,
-    sendTextMessage,
-    sendPhoto,
-    currentArtifact,
-    transcript,
-    audioState,
-    activeAgent,
+    connect, disconnect,
+    toggleMic, toggleCamera, interrupt,
+    requestTopicDetail, sendTextMessage, sendPhoto,
+    currentArtifact, transcript, audioState, activeAgent,
+    toolResult, restorationState, discoverySites, diaryResult, clearToolResult,
   };
 }

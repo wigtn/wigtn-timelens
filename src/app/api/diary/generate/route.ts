@@ -8,19 +8,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Modality } from '@google/genai';
 import { randomBytes } from 'crypto';
+import { z } from 'zod';
 import { getGeminiClient } from '@/lib/gemini/client';
-import { getVisits, createDiary, generateId } from '@/lib/firebase/firestore';
-import type { DiaryGenerateRequest, DiaryGenerateResponse, DiaryEntry } from '@/types/diary';
-import type { VisitDoc } from '@/types/models';
+import { generateId } from '@/lib/firebase/firestore';
+import type { DiaryGenerateResponse, DiaryEntry, DiaryVisitInput } from '@/types/diary';
 import type { ApiResponse } from '@/types/api';
 
-function buildDiaryPrompt(visits: VisitDoc[]): string {
+const diaryVisitSchema = z.object({
+  itemName: z.string().min(1),
+  venueName: z.string().optional(),
+  era: z.string().optional(),
+  civilization: z.string().optional(),
+  conversationSummary: z.string().min(1),
+});
+
+const diaryRequestSchema = z.object({
+  sessionId: z.string().min(1).max(128),
+  userId: z.string().min(1),
+  visits: z.array(diaryVisitSchema).min(1).max(50),
+});
+
+function buildDiaryPrompt(visits: DiaryVisitInput[]): string {
   const visitDescriptions = visits
     .map(
       (v, i) =>
         `${i + 1}. ${v.itemName} (${v.venueName ?? '알 수 없는 장소'})
-   시대: ${v.metadata.era ?? '미상'}
-   문명: ${v.metadata.civilization ?? '미상'}
+   시대: ${v.era ?? '미상'}
+   문명: ${v.civilization ?? '미상'}
    감상: ${v.conversationSummary}`
     )
     .join('\n\n');
@@ -79,38 +93,22 @@ function generateShareToken(): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as DiaryGenerateRequest;
-    const { sessionId } = body;
-
-    if (!sessionId || typeof sessionId !== 'string' || sessionId.length > 128) {
+    const raw = await request.json();
+    const parsed = diaryRequestSchema.safeParse(raw);
+    if (!parsed.success) {
       return NextResponse.json<ApiResponse<never>>(
         {
           success: false,
           error: {
             code: 'INVALID_PARAMS',
-            message: 'sessionId is required and must be a valid string',
+            message: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join(', '),
             retryable: false,
           },
         },
         { status: 400 }
       );
     }
-
-    // Firestore에서 방문 기록 조회
-    const visits = await getVisits(sessionId);
-    if (visits.length === 0) {
-      return NextResponse.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: {
-            code: 'NO_VISITS',
-            message: '방문 기록이 없습니다. 먼저 유물을 감상해주세요.',
-            retryable: false,
-          },
-        },
-        { status: 400 }
-      );
-    }
+    const { visits } = parsed.data;
 
     // Gemini 2.5 Flash Image로 인터리브 다이어리 생성
     const ai = getGeminiClient();
@@ -147,17 +145,9 @@ export async function POST(request: NextRequest) {
     }));
     const { title, entries } = parseInterleavedResponse(parts);
 
-    // Firestore에 다이어리 저장
+    // ID + 공유 토큰 생성 (Firestore 저장은 클라이언트에서 수행 — auth context 필요)
     const diaryId = generateId();
     const shareToken = generateShareToken();
-
-    await createDiary(diaryId, {
-      sessionId,
-      userId: '', // Part 1이 세션에서 userId를 관리
-      title,
-      entries,
-      shareToken,
-    });
 
     const diaryResponse: DiaryGenerateResponse = {
       success: true,

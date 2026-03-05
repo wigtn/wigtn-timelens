@@ -10,11 +10,11 @@ import type {
   SessionStatus,
   AppError,
 } from './common';
-import type { RestorationResult } from './restoration';
-import type { DiscoveryResult } from './discovery';
+import type { RestorationResult, RestorationUIState } from './restoration';
+import type { DiscoveryResult, NearbyPlace } from './discovery';
 import type { DiaryResult } from './diary';
 
-export type { RestorationResult, DiscoveryResult, DiaryResult };
+export type { RestorationResult, RestorationUIState, DiscoveryResult, NearbyPlace, DiaryResult };
 
 // --- 유물 인식 결과 (Live API Vision -> UI) ---
 export interface ArtifactSummary {
@@ -121,6 +121,12 @@ export interface UseLiveSessionReturn {
   transcript: TranscriptChunk[];
   audioState: AudioState;
   activeAgent: AgentType;
+  // Tool result UI 연결
+  toolResult: ToolResultData | null;
+  restorationState: RestorationUIState;
+  discoverySites: NearbyPlace[];
+  diaryResult: { diaryId: string; title: string } | null;
+  clearToolResult: () => void;
 }
 
 export interface TranscriptChunk {
