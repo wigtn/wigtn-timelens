@@ -44,7 +44,7 @@
         }
       ],
       [
-        "expo-av",
+        "expo-audio",
         {
           "microphonePermission": "TimeLens uses the microphone for voice conversation with your AI curator."
         }

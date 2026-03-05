@@ -1,8 +1,12 @@
-// Audio capture for React Native using expo-av
+// Audio capture for React Native using expo-audio
 // Records PCM 16kHz mono and sends base64 chunks to Gemini Live API
 
-import { Audio } from 'expo-av';
-import { File, Paths } from 'expo-file-system';
+import {
+  AudioModule,
+  setAudioModeAsync,
+} from 'expo-audio';
+import type { AudioRecorder, RecordingOptions } from 'expo-audio';
+import { File } from 'expo-file-system';
 
 export interface AudioCaptureCallbacks {
   onChunk: (base64Pcm: string) => void;
@@ -17,23 +21,21 @@ export interface AudioCaptureHandle {
   unmute(): void;
 }
 
-const RECORDING_OPTIONS: Audio.RecordingOptions = {
+const RECORDING_OPTIONS: RecordingOptions = {
+  extension: '.wav',
+  sampleRate: 16000,
+  numberOfChannels: 1,
+  bitRate: 256000,
   isMeteringEnabled: true,
   android: {
-    extension: '.wav',
-    outputFormat: Audio.AndroidOutputFormat.DEFAULT,
-    audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
+    outputFormat: 'default',
+    audioEncoder: 'default',
     sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 256000,
   },
   ios: {
-    extension: '.wav',
-    outputFormat: Audio.IOSOutputFormat.LINEARPCM,
-    audioQuality: Audio.IOSAudioQuality.HIGH,
+    outputFormat: 'lpcm',
+    audioQuality: 96,
     sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 256000,
     linearPCMBitDepth: 16,
     linearPCMIsBigEndian: false,
     linearPCMIsFloat: false,
@@ -47,17 +49,24 @@ const RECORDING_OPTIONS: Audio.RecordingOptions = {
 const CHUNK_DURATION_MS = 200;
 
 export function createAudioCapture(callbacks: AudioCaptureCallbacks): AudioCaptureHandle {
-  let recording: Audio.Recording | null = null;
+  let recorder: AudioRecorder | null = null;
   let active = false;
   let muted = false;
   let chunkTimer: ReturnType<typeof setTimeout> | null = null;
   let processingChunk = false;
 
+  async function createAndStartRecorder(): Promise<AudioRecorder> {
+    const rec = new AudioModule.AudioRecorder({});
+    await rec.prepareToRecordAsync(RECORDING_OPTIONS);
+    rec.record();
+    return rec;
+  }
+
   async function start(): Promise<void> {
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
+    await setAudioModeAsync({
+      allowsRecording: true,
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
     });
 
     active = true;
@@ -70,10 +79,7 @@ export function createAudioCapture(callbacks: AudioCaptureCallbacks): AudioCaptu
     if (!active) return;
 
     try {
-      recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(RECORDING_OPTIONS);
-      await recording.startAsync();
-
+      recorder = await createAndStartRecorder();
       scheduleNextChunk();
     } catch (err) {
       console.error('[AudioCapture] Start failed:', err);
@@ -87,25 +93,26 @@ export function createAudioCapture(callbacks: AudioCaptureCallbacks): AudioCaptu
   }
 
   async function processChunk(): Promise<void> {
-    if (!active || !recording || processingChunk) return;
+    if (!active || !recorder || processingChunk) return;
     processingChunk = true;
 
     try {
-      const status = await recording.getStatusAsync();
+      // Read metering before stopping
+      const status = recorder.getStatus();
       if (status.metering !== undefined) {
         const db = status.metering;
         const level = Math.max(0, Math.min(1, (db + 60) / 60));
         callbacks.onLevelChange(level);
       }
 
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
+      await recorder.stop();
+      const uri = recorder.uri;
 
       if (uri && !muted) {
         const tempFile = new File(uri);
         const base64Data = await tempFile.base64();
 
-        // Skip WAV header (44 bytes → ~60 base64 chars)
+        // Skip WAV header (44 bytes -> ~60 base64 chars)
         const pcmBase64 = base64Data.length > 60 ? base64Data.substring(60) : '';
         if (pcmBase64.length > 0) {
           callbacks.onChunk(pcmBase64);
@@ -115,17 +122,13 @@ export function createAudioCapture(callbacks: AudioCaptureCallbacks): AudioCaptu
       }
 
       if (active) {
-        recording = new Audio.Recording();
-        await recording.prepareToRecordAsync(RECORDING_OPTIONS);
-        await recording.startAsync();
+        recorder = await createAndStartRecorder();
       }
     } catch (err) {
       console.warn('[AudioCapture] Chunk error:', err);
       if (active) {
         try {
-          recording = new Audio.Recording();
-          await recording.prepareToRecordAsync(RECORDING_OPTIONS);
-          await recording.startAsync();
+          recorder = await createAndStartRecorder();
         } catch { /* restart failed */ }
       }
     } finally {
@@ -142,18 +145,17 @@ export function createAudioCapture(callbacks: AudioCaptureCallbacks): AudioCaptu
       chunkTimer = null;
     }
 
-    if (recording) {
+    if (recorder) {
       try {
-        const status = await recording.getStatusAsync();
-        if (status.isRecording) {
-          await recording.stopAndUnloadAsync();
+        if (recorder.isRecording) {
+          await recorder.stop();
         }
       } catch { /* already stopped */ }
-      recording = null;
+      recorder = null;
     }
 
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
+    await setAudioModeAsync({
+      allowsRecording: false,
     });
   }
 

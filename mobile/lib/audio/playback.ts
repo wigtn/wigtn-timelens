@@ -1,7 +1,8 @@
-// Audio playback for React Native using expo-av
+// Audio playback for React Native using expo-audio
 // Receives PCM 24kHz base64 from Gemini Live API and plays it
 
-import { Audio } from 'expo-av';
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import type { AudioPlayer } from 'expo-audio';
 import { File, Paths } from 'expo-file-system';
 
 export interface AudioPlaybackHandle {
@@ -57,17 +58,18 @@ function base64ToUint8(base64: string): Uint8Array {
 export function createAudioPlayback(): AudioPlaybackHandle {
   const queue: string[] = [];
   let isCurrentlyPlaying = false;
-  let currentSound: Audio.Sound | null = null;
+  let currentPlayer: AudioPlayer | null = null;
   let volume = 1.0;
   let accumulatedPcm = '';
   let flushTimer: ReturnType<typeof setTimeout> | null = null;
   let fileCounter = 0;
 
   async function ensureAudioMode(): Promise<void> {
-    await Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
-      shouldDuckAndroid: true,
+    await setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: 'duckOthers',
+      interruptionModeAndroid: 'duckOthers',
     });
   }
 
@@ -127,29 +129,29 @@ export function createAudioPlayback(): AudioPlaybackHandle {
       tempFile.create({ overwrite: true });
       tempFile.write(wavBase64, { encoding: 'base64' });
 
-      // Play
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: tempFile.uri },
-        { shouldPlay: true, volume },
-      );
-      currentSound = sound;
+      // Create player and play
+      const player = createAudioPlayer({ uri: tempFile.uri });
+      player.volume = volume;
+      currentPlayer = player;
 
       await new Promise<void>((resolve) => {
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded && status.didJustFinish) {
+        const sub = player.addListener('playbackStatusUpdate', (status) => {
+          if (status.didJustFinish) {
+            sub.remove();
             resolve();
           }
         });
+        player.play();
       });
 
-      await sound.unloadAsync();
-      currentSound = null;
+      player.remove();
+      currentPlayer = null;
       try { tempFile.delete(); } catch { /* ok */ }
 
       await playNext();
     } catch (err) {
       console.warn('[AudioPlayback] Play error:', err);
-      currentSound = null;
+      currentPlayer = null;
       await playNext();
     }
   }
@@ -162,10 +164,9 @@ export function createAudioPlayback(): AudioPlaybackHandle {
       flushTimer = null;
     }
     isCurrentlyPlaying = false;
-    if (currentSound) {
-      currentSound.stopAsync().catch(() => {});
-      currentSound.unloadAsync().catch(() => {});
-      currentSound = null;
+    if (currentPlayer) {
+      try { currentPlayer.remove(); } catch { /* ok */ }
+      currentPlayer = null;
     }
   }
 
@@ -175,8 +176,8 @@ export function createAudioPlayback(): AudioPlaybackHandle {
 
   function setVolumeLevel(v: number): void {
     volume = Math.max(0, Math.min(1, v));
-    if (currentSound) {
-      currentSound.setVolumeAsync(volume).catch(() => {});
+    if (currentPlayer) {
+      currentPlayer.volume = volume;
     }
   }
 

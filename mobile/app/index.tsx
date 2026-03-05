@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useCameraPermissions } from 'expo-camera';
-import { Audio } from 'expo-av';
+import { requestRecordingPermissionsAsync } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -35,7 +35,7 @@ export default function LandingScreen() {
       }
 
       // Request microphone permission
-      const { granted: micGranted } = await Audio.requestPermissionsAsync();
+      const { granted: micGranted } = await requestRecordingPermissionsAsync();
       if (!micGranted) {
         setError('Microphone permission is required');
         setLoading(false);
