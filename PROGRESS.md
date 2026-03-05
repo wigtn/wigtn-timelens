@@ -1,9 +1,9 @@
 # TimeLens Build Progress
 
 ## Current State
-- **Active Part**: Part 3 ✅ COMPLETE
+- **Active Part**: Part 4 (Discovery & Diary) ✅ COMPLETE
 - **Last Session**: 2026-03-05
-- **Build Status**: Part 5 + Part 1 + Part 2 + Part 3 완료, tsc + lint 클린
+- **Build Status**: Part 5 + Part 1 + Part 2 + Part 3 + Part 4 완료, tsc + lint 클린
 
 ---
 
@@ -123,23 +123,24 @@
 > Design: `docs/design/part4-discovery-diary.md`
 
 ### Lib & Hooks
-- [ ] `src/lib/geo/places.ts` — Google Places API 호출
-- [ ] `src/hooks/use-geolocation.ts` — GPS 좌표 접근
+- [x] `src/lib/geo/places.ts` — Google Places API 호출
+- [x] `src/hooks/use-geolocation.ts` — GPS 좌표 접근
 
 ### API Routes
-- [ ] `src/app/api/discover/route.ts` — Discovery REST API (Part 1 스캐폴드 교체)
-- [ ] `src/app/api/diary/generate/route.ts` — Diary 생성 (Part 1 스캐폴드 교체)
-- [ ] `src/app/api/diary/[id]/route.ts` — Diary 조회 (Part 1 스캐폴드 교체)
+- [x] `src/app/api/discover/route.ts` — Discovery REST API
+- [x] `src/app/api/diary/generate/route.ts` — Diary 생성 (Gemini interleaved)
+- [x] `src/app/api/diary/[id]/route.ts` — Diary 조회
 
 ### Pages & Components
-- [ ] `src/app/diary/[id]/page.tsx` — 다이어리 공유 페이지
-- [ ] `src/components/NearbyCard.tsx` — 유적지 카드
-- [ ] `src/components/NearbySites.tsx` — 주변 유적지 리스트
-- [ ] `src/components/DiaryViewer.tsx` — 다이어리 뷰어
+- [x] `src/app/diary/[id]/page.tsx` — 다이어리 공유 페이지 (SSR)
+- [x] `src/app/diary/[id]/diary-share-client.tsx` — 공유 페이지 클라이언트 래퍼
+- [x] `src/components/NearbyCard.tsx` — 유적지 카드
+- [x] `src/components/NearbySites.tsx` — 주변 유적지 리스트
+- [x] `src/components/DiaryViewer.tsx` — 다이어리 뷰어
 
 ### Agents (ADK)
-- [ ] `src/agents/discovery.ts` — Discovery Agent
-- [ ] `src/agents/diary.ts` — Diary Agent
+- [x] `src/agents/discovery.ts` — Discovery Agent
+- [x] `src/agents/diary.ts` — Diary Agent
 
 ---
 
@@ -165,3 +166,4 @@
 | 2026-03-05 | Part 1 | 16 files | tsc ✅ lint ✅ | Core Pipeline 완료 (Gemini Live API + Audio + Camera + Hooks) |
 | 2026-03-05 | Part 2 | 17 files | tsc ✅ lint ✅ | 전체 UI 구현 완료 (pages + components + agents + stubs) |
 | 2026-03-05 | Part 3 | 5 files | tsc ✅ lint ✅ | Restoration 완료 (Flash Image + REST API + Before/After Slider) |
+| 2026-03-05 | Part 4 | 13 files | tsc ✅ lint ✅ | Discovery + Diary 완료 (Places API + Gemini interleaved + SSR diary page) |

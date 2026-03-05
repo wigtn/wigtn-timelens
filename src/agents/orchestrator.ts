@@ -9,6 +9,8 @@
 
 import { LlmAgent } from '@google/adk';
 import { curatorAgent } from './curator';
+import { discoveryAgent } from './discovery';
+import { diaryAgent } from './diary';
 
 export const orchestrator = new LlmAgent({
   name: 'timelens_orchestrator',
@@ -28,18 +30,21 @@ and delegate to the appropriate specialist agent.
    - "복원해줘", "원래 모습 보여줘", "Show me the original"
    - "새것이었을 때 어떻게 생겼어?"
 
-3. **주변 탐색 요청** → curator_agent (텍스트 안내)
+3. **주변 탐색 요청** → discovery_agent
    - "근처에 박물관 있어?", "주변 유적지 추천"
-   - "Nearby museums?"
+   - "Nearby museums?", "What's nearby?"
 
-4. **다이어리 요청** → curator_agent (텍스트 안내)
+4. **다이어리 요청** → diary_agent
    - "다이어리 만들어줘", "방문 요약해줘"
+   - "Create my diary", "Summarize my visit"
 
 5. **기타 모든 입력** → curator_agent
 
 ## Important
-- In fallback text mode, only curator_agent is available.
+- Route discovery requests to discovery_agent.
+- Route diary requests to diary_agent.
+- All other requests go to curator_agent.
 - Respond in the user's language.`,
 
-  subAgents: [curatorAgent],
+  subAgents: [curatorAgent, discoveryAgent, diaryAgent],
 });
