@@ -5,16 +5,16 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getGeminiClient } from '@/lib/gemini/client';
+import { getGeminiClient } from '@back/lib/gemini/client';
 import {
   buildRestorationPrompt,
   generateRestorationImage,
-} from '@/lib/gemini/flash-image';
+} from '@back/lib/gemini/flash-image';
 import type {
   RestorationRequest,
   RestorationResponse,
   RestorationErrorResponse,
-} from '@/types/restoration';
+} from '@shared/types/restoration';
 
 const MAX_IMAGE_SIZE = 7 * 1024 * 1024; // 7MB
 

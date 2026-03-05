@@ -7,8 +7,8 @@
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getDiary } from '@/lib/firebase/firestore';
-import { toDiaryData } from '@/lib/diary-utils';
+import { getDiary } from '@back/lib/firebase/firestore';
+import { toDiaryData } from '@back/lib/diary-utils';
 import DiaryShareClient from './diary-share-client';
 
 // 공유 페이지는 60초마다 ISR 재검증

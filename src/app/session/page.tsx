@@ -10,17 +10,17 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mic, MicOff, BookOpen } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { PanelState, AgentType } from '@/types/common';
-import type { AgentSwitchData } from '@/types/live-session';
-import { useLiveSession } from '@/hooks/use-live-session';
-import CameraView, { type CameraViewRef } from '@/components/CameraView';
-import KnowledgePanel from '@/components/KnowledgePanel';
-import AgentIndicator from '@/components/AgentIndicator';
-import AudioVisualizer from '@/components/AudioVisualizer';
-import PermissionGate from '@/components/PermissionGate';
-import { RestorationResult } from '@/components/RestorationResult';
-import NearbySites from '@/components/NearbySites';
+import { cn } from '@web/lib/utils';
+import type { PanelState, AgentType } from '@shared/types/common';
+import type { AgentSwitchData } from '@shared/types/live-session';
+import { useLiveSession } from '@web/hooks/use-live-session';
+import CameraView, { type CameraViewRef } from '@web/components/CameraView';
+import KnowledgePanel from '@web/components/KnowledgePanel';
+import AgentIndicator from '@web/components/AgentIndicator';
+import AudioVisualizer from '@web/components/AudioVisualizer';
+import PermissionGate from '@web/components/PermissionGate';
+import { RestorationResult } from '@web/components/RestorationResult';
+import NearbySites from '@web/components/NearbySites';
 
 function getAgentSwitchReason(agent: AgentType): string {
   switch (agent) {

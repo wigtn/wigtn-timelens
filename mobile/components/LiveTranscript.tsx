@@ -1,7 +1,7 @@
 // Live transcript — subtitle-style overlay showing AI speech
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
-import type { TranscriptChunk } from '@/types/live-session';
+import type { TranscriptChunk } from '@shared/types/live-session';
 
 interface Props {
   chunks: TranscriptChunk[];

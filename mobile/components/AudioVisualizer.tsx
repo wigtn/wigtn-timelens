@@ -1,7 +1,7 @@
 // Audio visualizer — breathing idle animation + waveform when speaking
 import { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, TouchableOpacity } from 'react-native';
-import type { AudioState } from '@/types/common';
+import type { AudioState } from '@shared/types/common';
 
 interface Props {
   state: AudioState;

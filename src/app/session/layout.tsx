@@ -5,7 +5,7 @@
 // 출처: part2-curator-ui.md §3.3
 // ============================================================
 
-import ErrorBoundary from '@/components/ErrorBoundary';
+import ErrorBoundary from '@web/components/ErrorBoundary';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (

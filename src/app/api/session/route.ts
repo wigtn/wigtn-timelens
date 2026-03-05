@@ -5,8 +5,8 @@
 // ============================================================
 
 import { NextResponse } from 'next/server';
-import { getGeminiClient } from '@/lib/gemini/client';
-import type { ApiResponse, CreateSessionResponse, CreateSessionRequest } from '@/types/api';
+import { getGeminiClient } from '@back/lib/gemini/client';
+import type { ApiResponse, CreateSessionResponse, CreateSessionRequest } from '@shared/types/api';
 
 export async function POST(request: Request): Promise<NextResponse<ApiResponse<CreateSessionResponse>>> {
   try {

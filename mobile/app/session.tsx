@@ -19,7 +19,7 @@ import AudioVisualizer from '@/components/AudioVisualizer';
 import LiveTranscript from '@/components/LiveTranscript';
 import KnowledgePanel from '@/components/KnowledgePanel';
 import ConnectionOverlay from '@/components/ConnectionOverlay';
-import type { PanelState } from '@/types/common';
+import type { PanelState } from '@shared/types/common';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -108,7 +108,7 @@ export default function SessionScreen() {
   // Connection overlay
   if (!isConnected && sessionState.connectionStage !== 'ready') {
     return (
-      <ConnectionOverlay stage={sessionState.connectionStage} />
+      <ConnectionOverlay stage={sessionState.connectionStage ?? 'idle'} />
     );
   }
 

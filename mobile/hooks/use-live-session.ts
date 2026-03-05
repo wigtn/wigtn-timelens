@@ -18,8 +18,8 @@ import type {
   ToolResultData,
   RestorationUIState,
   NearbyPlace,
-} from '@/types/live-session';
-import type { AudioState, AgentType, ConnectionStage } from '@/types/common';
+} from '@shared/types/live-session';
+import type { AudioState, AgentType, ConnectionStage } from '@shared/types/common';
 
 const INITIAL_STATE: SessionState = {
   sessionId: null,
@@ -159,6 +159,9 @@ export function useLiveSession(): UseLiveSessionReturn & {
               break;
           }
         },
+        onTopicDetail: () => {
+          // Topic detail panel not yet implemented on mobile
+        },
         onError: (error) => {
           console.error('[useLiveSession] Error:', error);
           if (!error.recoverable) {
@@ -260,6 +263,14 @@ export function useLiveSession(): UseLiveSessionReturn & {
     ]);
   }, []);
 
+  const requestTopicDetail = useCallback((topicId: string, topicLabel: string) => {
+    liveSessionRef.current?.sendText(`Tell me more about ${topicLabel}`);
+  }, []);
+
+  const sendPhoto = useCallback((imageBase64: string) => {
+    liveSessionRef.current?.sendVideoFrame(imageBase64);
+  }, []);
+
   const clearToolResult = useCallback(() => {
     setToolResult(null);
     setRestorationState({ status: 'idle' });
@@ -276,7 +287,9 @@ export function useLiveSession(): UseLiveSessionReturn & {
     toggleMic,
     toggleCamera,
     interrupt,
+    requestTopicDetail,
     sendTextMessage,
+    sendPhoto,
     currentArtifact,
     transcript,
     audioState,

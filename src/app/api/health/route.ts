@@ -6,7 +6,7 @@
 // ============================================================
 
 import { NextResponse } from 'next/server';
-import type { ApiResponse, HealthResponse } from '@/types/api';
+import type { ApiResponse, HealthResponse } from '@shared/types/api';
 
 const startTime = Date.now();
 

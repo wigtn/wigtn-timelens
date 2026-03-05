@@ -10,8 +10,8 @@ import {
   PanResponder,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { PanelState } from '@/types/common';
-import type { ArtifactSummary, TranscriptChunk } from '@/types/live-session';
+import type { PanelState } from '@shared/types/common';
+import type { ArtifactSummary, TranscriptChunk } from '@shared/types/live-session';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 

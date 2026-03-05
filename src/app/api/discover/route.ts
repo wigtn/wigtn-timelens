@@ -6,9 +6,9 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { searchNearbyPlaces } from '@/lib/geo/places';
-import type { DiscoveryResponse } from '@/types/discovery';
-import type { ApiResponse } from '@/types/api';
+import { searchNearbyPlaces } from '@back/lib/geo/places';
+import type { DiscoveryResponse } from '@shared/types/discovery';
+import type { ApiResponse } from '@shared/types/api';
 
 export async function GET(request: NextRequest) {
   try {

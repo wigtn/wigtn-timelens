@@ -7,8 +7,8 @@
 'use client';
 
 import { useCallback } from 'react';
-import DiaryViewer from '@/components/DiaryViewer';
-import type { DiaryData } from '@/types/diary';
+import DiaryViewer from '@web/components/DiaryViewer';
+import type { DiaryData } from '@shared/types/diary';
 
 interface Props {
   diary: DiaryData;

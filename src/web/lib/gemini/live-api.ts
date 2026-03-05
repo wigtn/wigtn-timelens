@@ -1,5 +1,9 @@
-// Gemini Live API session manager for React Native
-// Ported from web version with proactive welcome prompt
+// ============================================================
+// 파일: src/lib/gemini/live-api.ts
+// 담당: Part 1
+// 역할: 클라이언트 Live API 세션 관리 (Ephemeral Token 인증)
+// ============================================================
+'use client';
 
 import { GoogleGenAI, Modality, type Session } from '@google/genai';
 import type {
@@ -7,9 +11,9 @@ import type {
   ArtifactSummary,
   SessionState,
 } from '@shared/types/live-session';
+import type { DiaryVisitInput } from '@shared/types/diary';
 import type { AudioState, SessionStatus, AgentType, AppError } from '@shared/types/common';
 import { LIVE_API_TOOLS, getSystemInstruction } from '@shared/gemini/tools';
-import { API_BASE_URL } from '@/constants/config';
 
 export interface LiveSessionConfig {
   token: string;
@@ -28,13 +32,14 @@ export class LiveSession {
   private resumeHandle: string | null = null;
   private pendingToolCalls: Map<string, { name: string; startTime: number }> = new Map();
   private onAudioData: ((base64: string) => void) | null = null;
+  private userId = '';
+  private visits: DiaryVisitInput[] = [];
 
   constructor(events: LiveSessionEvents) {
     this.events = events;
     this.state = {
       sessionId: null,
       status: 'disconnected',
-      connectionStage: 'idle',
       activeAgent: 'curator',
       audioState: 'idle',
       currentArtifact: null,
@@ -47,10 +52,7 @@ export class LiveSession {
     this.updateStatus('connecting');
     this.state.sessionId = config.sessionId;
 
-    this.ai = new GoogleGenAI({
-      apiKey: config.token,
-      httpOptions: { apiVersion: 'v1alpha' },
-    });
+    this.ai = new GoogleGenAI({ apiKey: config.token, httpOptions: { apiVersion: 'v1alpha' } });
 
     const systemInstruction = getSystemInstruction(config.language);
 
@@ -92,6 +94,7 @@ export class LiveSession {
       this.session = null;
     }
     this.ai = null;
+    this.visits = [];
     this.updateStatus('disconnected');
   }
 
@@ -117,6 +120,32 @@ export class LiveSession {
     });
   }
 
+  sendPhoto(base64Jpeg: string, prompt?: string): void {
+    if (!this.session || this.state.status !== 'connected') return;
+    this.session.sendClientContent({
+      turns: [{
+        role: 'user',
+        parts: [
+          { text: prompt || 'What is this artifact? Please identify it.' },
+          { inlineData: { mimeType: 'image/jpeg', data: base64Jpeg } },
+        ],
+      }],
+      turnComplete: true,
+    });
+  }
+
+  requestTopicDetail(topicId: string, topicLabel: string): void {
+    if (!this.session || this.state.status !== 'connected') return;
+    const artifactName = this.state.currentArtifact?.name || 'the current artifact';
+    this.session.sendClientContent({
+      turns: [{
+        role: 'user',
+        parts: [{ text: `Tell me more about the "${topicLabel}" aspect of ${artifactName}. Provide detailed, focused information.` }],
+      }],
+      turnComplete: true,
+    });
+  }
+
   interrupt(): void {
     if (this.state.audioState === 'speaking') {
       this.updateAudioState('idle');
@@ -135,6 +164,14 @@ export class LiveSession {
     this.onAudioData = handler;
   }
 
+  setUserId(uid: string): void {
+    this.userId = uid;
+  }
+
+  addVisit(visit: DiaryVisitInput): void {
+    this.visits.push(visit);
+  }
+
   // --- Private handlers ---
 
   private handleOpen(): void {
@@ -143,12 +180,13 @@ export class LiveSession {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handleMessage(message: any): void {
+    // 1. 세션 초기화 완료
     if (message.setupComplete) {
       this.updateStatus('connected');
-      this.sendWelcomePrompt();
       return;
     }
 
+    // 2. 오디오/텍스트 응답
     if (message.serverContent?.modelTurn?.parts) {
       for (const part of message.serverContent.modelTurn.parts) {
         if (part.inlineData) {
@@ -167,18 +205,22 @@ export class LiveSession {
       }
     }
 
+    // 3. 턴 완료
     if (message.serverContent?.turnComplete) {
       this.updateAudioState('idle');
     }
 
+    // 4. 인터럽션
     if (message.serverContent?.interrupted) {
       this.updateAudioState('listening');
     }
 
+    // 5. 함수 호출
     if (message.toolCall) {
       this.handleToolCalls(message.toolCall.functionCalls);
     }
 
+    // 6. 함수 호출 취소
     if (message.toolCallCancellation) {
       const ids = message.toolCallCancellation.ids;
       if (Array.isArray(ids)) {
@@ -188,6 +230,7 @@ export class LiveSession {
       }
     }
 
+    // 7. 입력 트랜스크립션 (사용자 STT)
     if (message.inputTranscription?.text) {
       this.events.onUserSpeech({
         text: message.inputTranscription.text,
@@ -198,6 +241,7 @@ export class LiveSession {
       }
     }
 
+    // 8. 출력 트랜스크립션 (AI 음성 텍스트)
     if (message.outputTranscription?.text) {
       this.events.onTranscript({
         text: message.outputTranscription.text,
@@ -206,26 +250,15 @@ export class LiveSession {
       });
     }
 
+    // 9. 세션 재접속 핸들 갱신
     if (message.sessionResumptionUpdate?.newHandle) {
       this.resumeHandle = message.sessionResumptionUpdate.newHandle;
     }
 
+    // 10. GoAway
     if (message.goAway) {
-      console.warn('[LiveSession] GoAway received');
+      console.warn('[LiveSession] GoAway received, session ending soon');
     }
-  }
-
-  private sendWelcomePrompt(): void {
-    setTimeout(() => {
-      if (!this.session || this.state.status !== 'connected') return;
-      this.session.sendClientContent({
-        turns: [{
-          role: 'user',
-          parts: [{ text: '[SYSTEM] Session connected. Camera and mic active. Greet the user warmly and let them know you are ready to watch. Be brief (2-3 sentences).' }],
-        }],
-        turnComplete: true,
-      });
-    }, 500);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -288,11 +321,11 @@ export class LiveSession {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleRestoration(fc: any): Promise<void> {
-    this.switchAgent('restoration', 'Generating restoration image');
+    this.switchAgent('restoration', '복원 이미지를 생성합니다');
     this.updateAudioState('generating');
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/restore`, {
+      const response = await fetch('/api/restore', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -326,9 +359,11 @@ export class LiveSession {
         });
       } else {
         this.sendToolErrorResponse(fc.id, fc.name, result.error || 'Restoration failed');
+        this.emitError('RESTORATION_FAILED', result.error || 'Failed', true, 'retry');
       }
     } catch {
       this.sendToolErrorResponse(fc.id, fc.name, 'Network error');
+      this.emitError('NETWORK_ERROR', 'Failed to reach restoration service', true, 'retry');
     } finally {
       this.pendingToolCalls.delete(fc.id);
       this.scheduleAgentReturn();
@@ -337,7 +372,7 @@ export class LiveSession {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleDiscovery(fc: any): Promise<void> {
-    this.switchAgent('discovery', 'Searching nearby heritage sites');
+    this.switchAgent('discovery', '주변 문화유산을 검색합니다');
     this.updateAudioState('generating');
 
     try {
@@ -348,7 +383,7 @@ export class LiveSession {
       });
       if (fc.args.interest_filter) params.set('type', fc.args.interest_filter);
 
-      const response = await fetch(`${API_BASE_URL}/api/discover?${params.toString()}`);
+      const response = await fetch(`/api/discover?${params.toString()}`);
       const result = await response.json();
 
       if (result.success) {
@@ -368,9 +403,11 @@ export class LiveSession {
         });
       } else {
         this.sendToolErrorResponse(fc.id, fc.name, result.error || 'Discovery failed');
+        this.emitError('DISCOVERY_FAILED', result.error || 'Failed', true, 'retry');
       }
     } catch {
       this.sendToolErrorResponse(fc.id, fc.name, 'Network error');
+      this.emitError('NETWORK_ERROR', 'Failed to reach discovery service', true, 'retry');
     } finally {
       this.pendingToolCalls.delete(fc.id);
       this.scheduleAgentReturn();
@@ -379,28 +416,17 @@ export class LiveSession {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleDiary(fc: any): Promise<void> {
-    this.switchAgent('diary', 'Generating diary');
+    this.switchAgent('diary', '다이어리를 생성합니다');
     this.updateAudioState('generating');
 
     try {
-      // Build visits from current artifact state (diary API requires userId + visits)
-      const visits = this.state.currentArtifact
-        ? [{
-            itemName: this.state.currentArtifact.name,
-            venueName: fc.args.venue_name || 'Unknown venue',
-            era: this.state.currentArtifact.era,
-            civilization: this.state.currentArtifact.civilization,
-            conversationSummary: fc.args.summary || 'Museum visit experience',
-          }]
-        : [];
-
-      const response = await fetch(`${API_BASE_URL}/api/diary/generate`, {
+      const response = await fetch('/api/diary/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: fc.args.session_id || this.state.sessionId,
-          userId: fc.args.user_id || 'anonymous',
-          visits,
+          userId: this.userId,
+          visits: this.visits,
         }),
       });
       const result = await response.json();
@@ -424,10 +450,12 @@ export class LiveSession {
           }],
         });
       } else {
-        this.sendToolErrorResponse(fc.id, fc.name, result.error || 'Diary failed');
+        this.sendToolErrorResponse(fc.id, fc.name, result.error || 'Diary generation failed');
+        this.emitError('DIARY_FAILED', result.error || 'Failed', true, 'retry');
       }
     } catch {
       this.sendToolErrorResponse(fc.id, fc.name, 'Network error');
+      this.emitError('NETWORK_ERROR', 'Failed to reach diary service', true, 'retry');
     } finally {
       this.pendingToolCalls.delete(fc.id);
       this.scheduleAgentReturn();
@@ -452,6 +480,7 @@ export class LiveSession {
   private handleClose(e: any): void {
     if (e?.code === 1008) {
       this.updateStatus('expired');
+      this.emitError('SESSION_EXPIRED', 'Session token expired or invalid', true, 'retry');
     } else {
       this.updateStatus('disconnected');
     }
@@ -487,7 +516,10 @@ export class LiveSession {
 
   private sendToolErrorResponse(id: string, name: string, error: string): void {
     this.session?.sendToolResponse({
-      functionResponses: [{ id, name, response: { status: 'error', error } }],
+      functionResponses: [{
+        id, name,
+        response: { status: 'error', error },
+      }],
     });
   }
 

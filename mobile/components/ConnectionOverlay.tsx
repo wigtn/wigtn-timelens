@@ -2,7 +2,7 @@
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { ConnectionStage } from '@/types/common';
+import type { ConnectionStage } from '@shared/types/common';
 
 interface Props {
   stage: ConnectionStage;

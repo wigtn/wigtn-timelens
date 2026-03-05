@@ -9,10 +9,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Modality } from '@google/genai';
 import { randomBytes } from 'crypto';
 import { z } from 'zod';
-import { getGeminiClient } from '@/lib/gemini/client';
-import { generateId } from '@/lib/firebase/firestore';
-import type { DiaryGenerateResponse, DiaryEntry, DiaryVisitInput } from '@/types/diary';
-import type { ApiResponse } from '@/types/api';
+import { getGeminiClient } from '@back/lib/gemini/client';
+import { generateId } from '@back/lib/firebase/firestore';
+import type { DiaryGenerateResponse, DiaryEntry, DiaryVisitInput } from '@shared/types/diary';
+import type { ApiResponse } from '@shared/types/api';
 
 const diaryVisitSchema = z.object({
   itemName: z.string().min(1),

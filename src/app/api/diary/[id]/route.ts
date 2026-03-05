@@ -6,10 +6,10 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDiary } from '@/lib/firebase/firestore';
-import { toDiaryData } from '@/lib/diary-utils';
-import type { DiaryData } from '@/types/diary';
-import type { ApiResponse, ApiSuccessResponse } from '@/types/api';
+import { getDiary } from '@back/lib/firebase/firestore';
+import { toDiaryData } from '@back/lib/diary-utils';
+import type { DiaryData } from '@shared/types/diary';
+import type { ApiResponse, ApiSuccessResponse } from '@shared/types/api';
 
 // Firestore auto-ID: 20 alphanumeric chars
 const DIARY_ID_RE = /^[a-zA-Z0-9]{1,40}$/;
