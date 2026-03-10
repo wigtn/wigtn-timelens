@@ -27,6 +27,7 @@ export interface KnowledgePanelProps {
   transcript: TranscriptChunk[];
   onStateChange: (state: PanelState) => void;
   onTopicTap: (topicId: string, topicLabel: string) => void;
+  audioState?: AudioState;
   children?: React.ReactNode;
 }
 

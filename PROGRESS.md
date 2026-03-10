@@ -2,8 +2,8 @@
 
 ## Current State
 - **Active Part**: 모노레포 구조 정리 ✅ COMPLETE
-- **Last Session**: 2026-03-05
-- **Build Status**: Part 5 + Part 1 + Part 2 + Part 3 + Part 4 완료, 모노레포 정리 완료, tsc + lint + build 클린
+- **Last Session**: 2026-03-10
+- **Build Status**: Part 5 + Part 1 + Part 2 + Part 3 + Part 4 완료, 모노레포 정리 완료, UX Overhaul 적용, tsc + lint 클린
 - **Structure**: `src/{app, shared, back, web}/` + `mobile/` (shared 연결)
 
 ---
@@ -174,3 +174,4 @@
 | 2026-03-05 | Integration | 3 files | tsc ✅ lint ✅ | Tool Result UI 연결 (onToolResult → 상태 → 컴포넌트 렌더링) |
 | 2026-03-05 | Integration | 8 files | tsc ✅ lint ✅ | Tool Result UI + Diary userId + Session/Visit 파이프라인 + Zod 검증 + 이벤트 팩토리 분리 + Geolocation 연동 + 계약 동기화 |
 | 2026-03-05 | Refactor | 50+ files | tsc ✅ lint ✅ build ✅ | 모노레포 구조 정리: src/{shared,back,web}/ 분리, mobile→shared 연결, import 경로 @shared/@back/@web 전환 |
+| 2026-03-10 | UX Overhaul | 3 files | tsc ✅ lint ✅ | 9개 UX 문제 수정: 연결 오버레이, 실시간 자막, 패널 확장 버튼, children expanded 렌더, ScanEye 버튼, 텍스트 입력 항상 표시, audioState 연동 |

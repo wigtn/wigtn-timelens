@@ -8,6 +8,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ChevronUp, ChevronDown, X } from 'lucide-react';
 import type { KnowledgePanelProps } from '@shared/types/components';
 import type { PanelState } from '@shared/types/common';
 import type { ArtifactSummary } from '@shared/types/live-session';
@@ -43,12 +44,23 @@ function ArtifactSummaryCard({ artifact }: { artifact: ArtifactSummary }) {
   );
 }
 
+const NEXT_STATE_UP: Record<string, PanelState> = {
+  mini: 'expanded',
+  expanded: 'fullscreen',
+};
+
+const NEXT_STATE_DOWN: Record<string, PanelState> = {
+  fullscreen: 'expanded',
+  expanded: 'mini',
+};
+
 export default function KnowledgePanel({
   state,
   artifact,
   transcript,
   onStateChange,
   onTopicTap,
+  audioState,
   children,
 }: KnowledgePanelProps) {
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -90,10 +102,19 @@ export default function KnowledgePanel({
     setTouchDelta(0);
   };
 
-  // Desktop click fallback: tap panel to expand from mini
-  const handleClick = () => {
-    if (state === 'mini') onStateChange('expanded');
+  // Desktop click: cycle mini → expanded → fullscreen
+  const handleExpandClick = () => {
+    const next = NEXT_STATE_UP[state];
+    if (next) onStateChange(next);
   };
+
+  const handleCollapseClick = () => {
+    const next = NEXT_STATE_DOWN[state];
+    if (next) onStateChange(next);
+  };
+
+  // Last transcript preview for mini state
+  const lastTranscript = transcript.length > 0 ? transcript[transcript.length - 1] : null;
 
   return (
     <div
@@ -113,11 +134,47 @@ export default function KnowledgePanel({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onClick={handleClick}
       >
-        {/* Drag handle */}
-        <div className="flex justify-center py-3">
+        {/* Drag handle + Desktop expand/collapse buttons */}
+        <div className="flex items-center justify-center gap-2 py-3 relative">
           <div className="w-9 h-1 rounded-full bg-gray-500/60" />
+
+          {state !== 'closed' && (
+            <div className="absolute right-3 flex items-center gap-1">
+              {NEXT_STATE_UP[state] && (
+                <button
+                  onClick={handleExpandClick}
+                  className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center
+                             hover:bg-white/20 transition-colors"
+                  aria-label="패널 확장"
+                >
+                  <ChevronUp className="w-4 h-4 text-gray-400" />
+                </button>
+              )}
+              {NEXT_STATE_DOWN[state] && (
+                <button
+                  onClick={handleCollapseClick}
+                  className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center
+                             hover:bg-white/20 transition-colors"
+                  aria-label="패널 축소"
+                >
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Fullscreen close button */}
+          {state === 'fullscreen' && (
+            <button
+              onClick={() => onStateChange('expanded')}
+              className="absolute right-3 top-2 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center
+                         hover:bg-white/20 transition-colors"
+              aria-label="전체화면 닫기"
+            >
+              <X className="w-4 h-4 text-gray-400" />
+            </button>
+          )}
         </div>
 
         {state !== 'closed' && (
@@ -136,13 +193,21 @@ export default function KnowledgePanel({
               </div>
             )}
 
+            {/* Mini: last transcript preview */}
+            {state === 'mini' && lastTranscript && (
+              <p className="text-xs text-gray-400 mt-2 truncate">
+                {lastTranscript.role === 'user' ? '나: ' : 'AI: '}
+                {lastTranscript.text}
+              </p>
+            )}
+
             {(state === 'expanded' || state === 'fullscreen') && (
               <div className="mt-3 border-t border-gray-700/50 pt-3">
-                <TranscriptChat chunks={transcript} isStreaming={false} />
+                <TranscriptChat chunks={transcript} isStreaming={audioState === 'speaking'} />
               </div>
             )}
 
-            {state === 'fullscreen' && children}
+            {(state === 'expanded' || state === 'fullscreen') && children}
           </div>
         )}
       </div>

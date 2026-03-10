@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mic, MicOff, BookOpen } from 'lucide-react';
+import { Mic, MicOff, BookOpen, ScanEye, Loader2 } from 'lucide-react';
 import { cn } from '@web/lib/utils';
 import type { PanelState, AgentType } from '@shared/types/common';
 import type { AgentSwitchData } from '@shared/types/live-session';
@@ -39,7 +39,6 @@ export default function MainPage() {
   // Part 1 hook
   const {
     isConnected,
-    isFallbackMode,
     connect,
     toggleMic,
     requestTopicDetail,
@@ -99,10 +98,10 @@ export default function MainPage() {
     }
   }, [activeAgent]);
 
-  // Auto-expand panel when tool results arrive
+  // [변경 7] Auto-expand panel when tool results arrive (fullscreen → expanded)
   useEffect(() => {
     if (restorationState.status === 'ready' || discoverySites.length > 0) {
-      setPanelState('fullscreen');
+      setPanelState('expanded');
     }
   }, [restorationState.status, discoverySites.length]);
 
@@ -120,10 +119,14 @@ export default function MainPage() {
     toggleMic(newState);
   }, [isMicOn, toggleMic]);
 
+  // [변경 4] handleCapture: sendPhoto + auto-expand panel
   const handleCapture = useCallback(() => {
     const photo = cameraViewRef.current?.capturePhoto();
-    if (photo) sendPhoto(photo);
-  }, [sendPhoto]);
+    if (photo) {
+      sendPhoto(photo);
+      if (panelState === 'mini') setPanelState('expanded');
+    }
+  }, [sendPhoto, panelState]);
 
   const handleTopicTap = useCallback(
     (topicId: string, topicLabel: string) => {
@@ -139,6 +142,10 @@ export default function MainPage() {
       setTextInput('');
     }
   }, [textInput, sendTextMessage]);
+
+  // Last transcript for subtitle overlay
+  const lastChunk = transcript.length > 0 ? transcript[transcript.length - 1] : null;
+  const showSubtitle = lastChunk && panelState !== 'expanded' && panelState !== 'fullscreen';
 
   // Permission gate
   if (!permissionsGranted) {
@@ -156,8 +163,37 @@ export default function MainPage() {
         onCapturePhoto={() => cameraViewRef.current?.capturePhoto() ?? ''}
       />
 
-      {/* Layer 1: Agent + Audio indicators */}
-      <div className="absolute left-0 right-0 z-10" style={{ bottom: 200 }}>
+      {/* [변경 1] Connection overlay — fullscreen z-40 */}
+      {!isConnected && permissionsGranted && (
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md">
+          <div className="flex flex-col items-center gap-4">
+            <span className="text-3xl font-heading font-bold text-timelens-gold animate-pulse">
+              TimeLens
+            </span>
+            <Loader2 className="w-8 h-8 text-timelens-gold animate-spin" />
+            <span className="text-sm text-gray-400">AI 큐레이터에 연결 중...</span>
+          </div>
+        </div>
+      )}
+
+      {/* [변경 2] Real-time subtitle overlay — z-15 */}
+      {showSubtitle && (
+        <div className="absolute top-safe-top left-0 right-0 z-[15] px-4 pt-4 animate-in fade-in duration-300">
+          <div className="bg-black/50 backdrop-blur-sm rounded-xl px-4 py-3 max-w-lg mx-auto">
+            <p
+              className={cn(
+                'text-sm leading-relaxed line-clamp-2',
+                lastChunk.role === 'user' ? 'text-blue-300' : 'text-white',
+              )}
+            >
+              {lastChunk.text}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* [변경 3] Layer 1: Agent + Audio indicators — z-25, bottom-24 */}
+      <div className="absolute left-0 right-0 bottom-24 z-[25]">
         <AgentIndicator
           activeAgent={activeAgent}
           switchData={agentTransition ?? undefined}
@@ -173,6 +209,7 @@ export default function MainPage() {
         transcript={transcript}
         onStateChange={setPanelState}
         onTopicTap={handleTopicTap}
+        audioState={audioState}
       >
         {/* Restoration Result */}
         {restorationState.status !== 'idle' && (
@@ -189,40 +226,28 @@ export default function MainPage() {
         )}
       </KnowledgePanel>
 
-      {/* Layer 3: Connection status */}
-      {!isConnected && permissionsGranted && (
-        <div className="absolute top-safe-top left-0 right-0 z-30 flex justify-center pt-4">
-          <div className="flex items-center gap-2 px-4 py-2 bg-black/70 backdrop-blur-md rounded-full">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span className="text-xs text-gray-300">연결 중...</span>
-          </div>
-        </div>
-      )}
-
       {/* Layer 4: Action bar */}
       <div className="absolute bottom-0 left-0 right-0 z-30 pb-safe-bottom">
-        {/* Fallback text input */}
-        {isFallbackMode && (
-          <div className="flex items-center gap-2 px-4 pb-3">
-            <input
-              type="text"
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
-              placeholder="메시지를 입력하세요..."
-              className="flex-1 px-4 py-3 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm
-                         placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-timelens-gold/40
-                         border border-white/10"
-            />
-            <button
-              onClick={handleTextSubmit}
-              className="px-5 py-3 bg-timelens-gold text-black rounded-full font-medium text-sm
-                         active:scale-95 transition-transform"
-            >
-              전송
-            </button>
-          </div>
-        )}
+        {/* [변경 5] Text input — always visible */}
+        <div className="flex items-center gap-2 px-4 pb-3">
+          <input
+            type="text"
+            value={textInput}
+            onChange={(e) => setTextInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
+            placeholder="메시지를 입력하세요..."
+            className="flex-1 px-4 py-3 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm
+                       placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-timelens-gold/40
+                       border border-white/10"
+          />
+          <button
+            onClick={handleTextSubmit}
+            className="px-5 py-3 bg-timelens-gold text-black rounded-full font-medium text-sm
+                       active:scale-95 transition-transform"
+          >
+            전송
+          </button>
+        </div>
 
         <div className="flex items-center justify-around px-6 py-3 bg-gradient-to-t from-black/80 to-black/40 backdrop-blur-md">
           {/* Mic toggle */}
@@ -239,15 +264,18 @@ export default function MainPage() {
             {isMicOn ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
           </button>
 
-          {/* Capture */}
+          {/* [변경 4] Capture — ScanEye + brand gold + pulse-ring */}
           <button
             onClick={handleCapture}
             className="relative w-[72px] h-[72px] rounded-full flex items-center justify-center
                        active:scale-95 transition-transform"
             aria-label="사진 캡처"
           >
-            <div className="absolute inset-0 rounded-full border-[3px] border-white/80" />
-            <div className="w-[58px] h-[58px] rounded-full bg-white hover:bg-gray-100 transition-colors" />
+            <div className="absolute inset-0 rounded-full border-[3px] border-timelens-gold/80 animate-pulse" />
+            <div className="w-[58px] h-[58px] rounded-full bg-timelens-gold/20 hover:bg-timelens-gold/30
+                            flex items-center justify-center transition-colors">
+              <ScanEye className="w-7 h-7 text-timelens-gold" />
+            </div>
           </button>
 
           {/* Diary */}
