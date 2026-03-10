@@ -1,10 +1,15 @@
 <p align="center">
-  <img src="assets/logo.png" alt="TimeLens Logo" width="200" />
+  <img src="assets/logo.png" alt="TimeLens" width="360" />
 </p>
 
-<h1 align="center">TimeLens</h1>
+<p align="center">
+  <strong>AI-powered cultural heritage companion</strong><br/>
+  Brings museum artifacts to life through real-time conversation, image restoration, and interactive discovery.
+</p>
 
-<p align="center">AI-powered cultural heritage companion that brings museum artifacts to life through real-time conversation, image restoration, and interactive discovery.</p>
+<p align="center">
+  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a>
+</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Next.js-15-black?logo=next.js" alt="Next.js 15" />

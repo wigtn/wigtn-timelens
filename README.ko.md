@@ -1,10 +1,15 @@
 <p align="center">
-  <img src="assets/logo.png" alt="TimeLens Logo" width="200" />
+  <img src="assets/logo.png" alt="TimeLens" width="360" />
 </p>
 
-<h1 align="center">TimeLens</h1>
+<p align="center">
+  <strong>AI 문화유산 컴패니언</strong><br/>
+  박물관 유물에 생명을 불어넣는 실시간 대화, 이미지 복원, 인터랙티브 탐험.
+</p>
 
-<p align="center">박물관 유물에 생명을 불어넣는 AI 문화유산 컴패니언. 실시간 대화, 이미지 복원, 인터랙티브 탐험을 제공합니다.</p>
+<p align="center">
+  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a>
+</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Next.js-15-black?logo=next.js" alt="Next.js 15" />
