@@ -1,18 +1,26 @@
 # ============================================================
-# TimeLens CI/CD Pipeline
-# Google Cloud Build -> Artifact Registry -> Cloud Run (서울)
+# TimeLens Cloud Build — 수동 빌드 전용
+# gcloud builds submit 으로 로컬에서 트리거
+# 자동 배포는 GitHub Actions (.github/workflows/deploy.yml)
 # ============================================================
 
 steps:
-  # ── Step 1: Docker 이미지 빌드 ─────────────────────────
+  # ── Step 1: 필수 변수 검증 ─────────────────────────────
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        test -n "$_NEXT_PUBLIC_FIREBASE_API_KEY" || { echo "ERROR: _NEXT_PUBLIC_FIREBASE_API_KEY is required"; exit 1; }
+        test -n "$_NEXT_PUBLIC_FIREBASE_PROJECT_ID" || { echo "ERROR: _NEXT_PUBLIC_FIREBASE_PROJECT_ID is required"; exit 1; }
+        echo "All required substitutions present."
+
+  # ── Step 2: Docker 이미지 빌드 ─────────────────────────
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
       - '-t'
-      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/timelens/app:$SHORT_SHA'
-      - '-t'
-      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/timelens/app:latest'
-      # NEXT_PUBLIC_* 빌드 타임 환경 변수
+      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/timelens/app:$COMMIT_SHA'
       - '--build-arg'
       - 'NEXT_PUBLIC_FIREBASE_API_KEY=$_NEXT_PUBLIC_FIREBASE_API_KEY'
       - '--build-arg'
@@ -27,30 +35,45 @@ steps:
       - 'NEXT_PUBLIC_WS_URL=$_NEXT_PUBLIC_WS_URL'
       - '.'
 
-  # ── Step 2: Artifact Registry에 푸시 ──────────────────
+  # ── Step 3: Artifact Registry에 푸시 ──────────────────
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/timelens/app:$SHORT_SHA'
+      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/timelens/app:$COMMIT_SHA'
 
-  - name: 'gcr.io/cloud-builders/docker'
+  # ── Step 4: Cloud Run 배포 (public web app — 앱 레이어에서 인증 처리)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
     args:
-      - 'push'
-      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/timelens/app:latest'
+      - 'run'
+      - 'deploy'
+      - 'timelens'
+      - '--image'
+      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/timelens/app:$COMMIT_SHA'
+      - '--region'
+      - 'asia-northeast3'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '1Gi'
+      - '--cpu'
+      - '1'
+      - '--max-instances'
+      - '3'
+      - '--set-secrets'
+      - 'GOOGLE_GENAI_API_KEY=GOOGLE_GENAI_API_KEY:latest,FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest,GOOGLE_PLACES_API_KEY=GOOGLE_PLACES_API_KEY:latest'
+      - '--set-env-vars'
+      - 'NODE_ENV=production'
 
-# 이미지 태깅
 images:
-  - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/timelens/app:$SHORT_SHA'
-  - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/timelens/app:latest'
+  - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/timelens/app:$COMMIT_SHA'
 
-# 빌드 옵션
 options:
   logging: CLOUD_LOGGING_ONLY
 
-# 타임아웃 (빌드)
-timeout: '1200s'
+timeout: '600s'
 
-# Cloud Build 트리거에서 설정하는 대체 변수
 substitutions:
   _NEXT_PUBLIC_FIREBASE_API_KEY: ''
   _NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ''

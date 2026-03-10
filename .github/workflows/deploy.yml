@@ -1,0 +1,105 @@
+# ============================================================
+# TimeLens CI/CD — GitHub Actions (Primary)
+# main push → Docker Build → Artifact Registry → Cloud Run
+# cloudbuild.yaml은 수동 빌드 전용 (gcloud builds submit)
+# ============================================================
+
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'mobile/**'
+
+# 배포 중 새 push가 오면 대기 (진행 중인 배포를 취소하지 않음)
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PROJECT_ID: wigtn-timelens
+  REGION: asia-northeast3
+  SERVICE: timelens
+  REGISTRY: asia-northeast3-docker.pkg.dev/wigtn-timelens/timelens/app
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      # 1. Checkout
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. GCP 인증 (Service Account Key)
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # 3. gcloud CLI 설정
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      # 4. Docker → Artifact Registry 인증
+      - name: Configure Docker
+        run: gcloud auth configure-docker asia-northeast3-docker.pkg.dev --quiet
+
+      # 5. Docker 빌드 캐시 설정
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 6. Docker 이미지 빌드 + 푸시 (GHA 레이어 캐시 사용)
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}:${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+            NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
+            NEXT_PUBLIC_WS_URL=${{ secrets.NEXT_PUBLIC_WS_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 7. Cloud Run 배포 (public web app — 앱 레이어에서 인증 처리)
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE }} \
+            --image ${{ env.REGISTRY }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --memory 1Gi \
+            --cpu 1 \
+            --max-instances 3 \
+            --set-secrets "GOOGLE_GENAI_API_KEY=GOOGLE_GENAI_API_KEY:latest,FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest,GOOGLE_PLACES_API_KEY=GOOGLE_PLACES_API_KEY:latest" \
+            --set-env-vars "NODE_ENV=production"
+
+      # 8. 배포 검증 (Health Check with retry)
+      - name: Verify deployment
+        run: |
+          URL=$(gcloud run services describe ${{ env.SERVICE }} \
+            --region ${{ env.REGION }} \
+            --format "value(status.url)")
+          echo "Deployed to: $URL"
+          for i in 1 2 3; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL/api/health")
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed (200 OK)"
+              exit 0
+            fi
+            echo "Attempt $i: status $STATUS, retrying in 5s..."
+            sleep 5
+          done
+          echo "Health check failed after 3 attempts"
+          exit 1
