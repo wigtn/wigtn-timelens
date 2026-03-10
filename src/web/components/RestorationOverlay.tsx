@@ -7,14 +7,16 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { cn } from '@web/lib/utils';
+import { t, type Locale } from '@shared/i18n';
 import type { RestorationUIState } from '@shared/types/restoration';
 
 export interface RestorationOverlayProps {
   state: RestorationUIState;
   beforeImage: string | null;
+  locale?: Locale;
 }
 
-export function RestorationOverlay({ state, beforeImage: _beforeImage }: RestorationOverlayProps) {
+export function RestorationOverlay({ state, beforeImage: _beforeImage, locale = 'ko' }: RestorationOverlayProps) {
   const [opacity, setOpacity] = useState(0);
   const [timelineValue, setTimelineValue] = useState(0);
   const [showTimeline, setShowTimeline] = useState(false);
@@ -81,7 +83,7 @@ export function RestorationOverlay({ state, beforeImage: _beforeImage }: Restora
               <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" style={{ animationDelay: '400ms' }} />
             </div>
             <p className="text-sm text-white font-medium">
-              시간여행 중...
+              {t('restoration.loading', locale)}
             </p>
             <p className="text-xs text-amber-400">
               {artifactName} → {era}
@@ -106,7 +108,7 @@ export function RestorationOverlay({ state, beforeImage: _beforeImage }: Restora
       {state.status === 'error' && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="bg-red-900/60 backdrop-blur-sm rounded-2xl px-6 py-4">
-            <p className="text-sm text-red-300">복원 실패</p>
+            <p className="text-sm text-red-300">{t('restoration.failed', locale)}</p>
             <p className="text-xs text-red-400/70 mt-1">{state.error}</p>
           </div>
         </div>
@@ -139,7 +141,7 @@ export function RestorationOverlay({ state, beforeImage: _beforeImage }: Restora
         >
           <div className="bg-black/60 backdrop-blur-md rounded-2xl px-4 py-3">
             <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
-              <span>현재</span>
+              <span>{t('restoration.now', locale)}</span>
               <span className="text-amber-400 font-medium">{era}</span>
             </div>
             <input

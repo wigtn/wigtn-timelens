@@ -11,6 +11,7 @@ import type {
   TranscriptChunk,
   AgentSwitchData,
 } from './live-session';
+import type { Locale } from '@shared/i18n';
 
 // --- CameraView ---
 export interface CameraViewProps {
@@ -42,12 +43,14 @@ export interface AgentIndicatorProps {
   activeAgent: AgentType;
   switchData?: AgentSwitchData;
   isTransitioning: boolean;
+  locale?: Locale;
 }
 
 // --- TranscriptChat ---
 export interface TranscriptProps {
   chunks: TranscriptChunk[];
   isStreaming: boolean;
+  locale?: Locale;
 }
 
 // --- BeforeAfterSlider (Part 3) ---

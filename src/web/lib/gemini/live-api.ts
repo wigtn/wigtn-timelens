@@ -105,7 +105,12 @@ export class LiveSession {
   }
 
   sendAudio(base64Pcm: string): void {
-    if (!this.session || this.state.status !== 'connected') return;
+    if (!this.session || this.state.status !== 'connected') {
+      if (this.state.status !== 'connecting') {
+        console.warn('[LiveSession] Audio chunk dropped — status:', this.state.status);
+      }
+      return;
+    }
     this.session.sendRealtimeInput({
       media: { data: base64Pcm, mimeType: 'audio/pcm;rate=16000' },
     });

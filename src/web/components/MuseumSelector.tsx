@@ -1,15 +1,15 @@
 // ============================================================
 // 파일: src/web/components/MuseumSelector.tsx
 // 역할: 박물관 선택 온보딩 화면
-// GPS 기반 근처 박물관 리스트 + 텍스트 검색 + 자유 탐험
 // ============================================================
 
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { MapPin, Search, Globe, Loader2, Star } from 'lucide-react';
+import { MapPin, Search, Globe, Loader2, Star, ArrowLeft } from 'lucide-react';
 import { cn } from '@web/lib/utils';
+import { t, type Locale } from '@shared/i18n';
 import type { MuseumContext } from '@shared/types/live-session';
 
 interface MuseumInfo {
@@ -17,12 +17,10 @@ interface MuseumInfo {
   name: string;
   address?: string;
   location: { lat: number; lng: number };
-  /** Distance in meters (nearby API uses distanceMeters, search uses distance) */
   distanceMeters?: number;
   distance?: number;
   photoUrl?: string;
   rating?: number;
-  /** Open status (nearby API uses isOpen, search uses openNow) */
   openNow?: boolean;
   isOpen?: boolean;
   type?: string;
@@ -32,6 +30,8 @@ interface MuseumSelectorProps {
   userLocation: { lat: number; lng: number } | null;
   onSelect: (museum: MuseumContext) => void;
   onSkip: () => void;
+  onBack?: () => void;
+  locale?: Locale;
 }
 
 function formatDistance(meters: number): string {
@@ -42,9 +42,11 @@ function formatDistance(meters: number): string {
 function MuseumCard({
   museum,
   onClick,
+  locale = 'ko',
 }: {
   museum: MuseumInfo;
   onClick: () => void;
+  locale?: Locale;
 }) {
   const dist = museum.distanceMeters ?? museum.distance ?? 0;
   const isOpen = museum.openNow ?? museum.isOpen;
@@ -73,7 +75,7 @@ function MuseumCard({
             )}
             {isOpen !== undefined && (
               <span className={cn('text-xs', isOpen ? 'text-emerald-400' : 'text-red-400')}>
-                {isOpen ? '영업 중' : '영업 종료'}
+                {isOpen ? t('museum.open', locale) : t('museum.closed', locale)}
               </span>
             )}
           </div>
@@ -93,7 +95,7 @@ function MuseumCard({
   );
 }
 
-export default function MuseumSelector({ userLocation, onSelect, onSkip }: MuseumSelectorProps) {
+export default function MuseumSelector({ userLocation, onSelect, onSkip, onBack, locale = 'ko' }: MuseumSelectorProps) {
   const [nearbyMuseums, setNearbyMuseums] = useState<MuseumInfo[]>([]);
   const [searchResults, setSearchResults] = useState<MuseumInfo[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,7 +106,6 @@ export default function MuseumSelector({ userLocation, onSelect, onSkip }: Museu
 
   useEffect(() => { setMounted(true); }, []);
 
-  // GPS 기반 근처 박물관 로드
   useEffect(() => {
     if (!userLocation) return;
     const controller = new AbortController();
@@ -133,15 +134,15 @@ export default function MuseumSelector({ userLocation, onSelect, onSkip }: Museu
     setIsSearching(true);
 
     try {
-      const res = await fetch(`/api/museums/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      const res = await fetch(`/api/museums/search?q=${encodeURIComponent(searchQuery.trim())}&lang=${locale}`);
       const data = await res.json();
       if (data.success) setSearchResults(data.data?.museums ?? []);
     } catch {
-      // 검색 실패 시 무시
+      // ignore
     } finally {
       setIsSearching(false);
     }
-  }, [searchQuery]);
+  }, [searchQuery, locale]);
 
   const selectMuseum = useCallback((museum: MuseumInfo) => {
     onSelect({
@@ -159,11 +160,21 @@ export default function MuseumSelector({ userLocation, onSelect, onSkip }: Museu
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col items-center px-6 pt-safe-top pb-safe-bottom overflow-y-auto">
-      {/* Background accent */}
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[400px] rounded-full opacity-15 blur-[120px] pointer-events-none"
         style={{ background: 'radial-gradient(circle, #D4A574 0%, transparent 70%)' }}
       />
+
+      {/* Back button */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="absolute top-safe-top left-4 mt-4 z-20 w-10 h-10 rounded-full bg-white/[0.06] border border-white/[0.06]
+                     flex items-center justify-center hover:bg-white/10 transition-colors"
+        >
+          <ArrowLeft className="w-4.5 h-4.5 text-gray-400" />
+        </button>
+      )}
 
       <div
         className={cn(
@@ -171,22 +182,20 @@ export default function MuseumSelector({ userLocation, onSelect, onSkip }: Museu
           mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4',
         )}
       >
-        {/* Header */}
         <h1 className="text-2xl font-heading font-bold text-white text-center">
           TimeLens
         </h1>
         <p className="text-base text-gray-300 text-center mt-3">
-          오늘 어디를 탐험하시나요?
+          {t('museum.title', locale)}
         </p>
 
-        {/* Search bar */}
         <div className="mt-8 flex gap-2">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder="박물관 검색..."
+            placeholder={t('museum.searchPlaceholder', locale)}
             className="flex-1 px-4 py-3 bg-white/10 rounded-xl text-white text-sm
                        placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-timelens-gold/40
                        border border-white/10"
@@ -205,12 +214,11 @@ export default function MuseumSelector({ userLocation, onSelect, onSkip }: Museu
           </button>
         </div>
 
-        {/* Nearby museums list */}
         {userLocation && !searchResults.length && (
           <div className="mt-6">
             <div className="flex items-center gap-2 mb-3">
               <MapPin className="w-4 h-4 text-timelens-gold" />
-              <span className="text-xs text-gray-400 font-medium">현재 위치 기반</span>
+              <span className="text-xs text-gray-400 font-medium">{t('museum.nearbyLabel', locale)}</span>
             </div>
 
             {isLoadingNearby && (
@@ -223,19 +231,18 @@ export default function MuseumSelector({ userLocation, onSelect, onSkip }: Museu
 
             {nearbyError && !isLoadingNearby && (
               <p className="text-xs text-gray-500 text-center py-6">
-                근처 박물관을 찾을 수 없습니다. 검색을 이용해주세요.
+                {t('museum.nearbyEmpty', locale)}
               </p>
             )}
           </div>
         )}
 
-        {/* Museum list */}
         {displayList.length > 0 && (
           <div className="mt-4 space-y-2">
             {searchResults.length > 0 && (
               <div className="flex items-center gap-2 mb-3">
                 <Search className="w-4 h-4 text-timelens-gold" />
-                <span className="text-xs text-gray-400 font-medium">검색 결과</span>
+                <span className="text-xs text-gray-400 font-medium">{t('museum.searchResults', locale)}</span>
               </div>
             )}
             {displayList.map((museum) => (
@@ -243,26 +250,25 @@ export default function MuseumSelector({ userLocation, onSelect, onSkip }: Museu
                 key={museum.id}
                 museum={museum}
                 onClick={() => selectMuseum(museum)}
+                locale={locale}
               />
             ))}
           </div>
         )}
 
-        {/* Divider */}
         <div className="flex items-center gap-3 mt-8">
           <div className="flex-1 h-px bg-white/[0.08]" />
-          <span className="text-xs text-gray-500">또는</span>
+          <span className="text-xs text-gray-500">{t('museum.or', locale)}</span>
           <div className="flex-1 h-px bg-white/[0.08]" />
         </div>
 
-        {/* Skip button */}
         <button
           onClick={onSkip}
           className="mt-6 w-full py-4 bg-white/[0.06] hover:bg-white/[0.10] rounded-2xl
                      border border-white/[0.08] transition-colors flex items-center justify-center gap-2"
         >
           <Globe className="w-5 h-5 text-gray-400" />
-          <span className="text-sm text-gray-300 font-medium">박물관 없이 자유 탐험</span>
+          <span className="text-sm text-gray-300 font-medium">{t('museum.skip', locale)}</span>
         </button>
       </div>
     </div>

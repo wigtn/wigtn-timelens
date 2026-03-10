@@ -1,7 +1,6 @@
 // ============================================================
 // 파일: src/web/components/OnboardingSplash.tsx
 // 역할: 박물관 선택 후 세션 연결 중 표시되는 스플래시
-// Phase 3: 온보딩 스플래시
 // ============================================================
 
 'use client';
@@ -9,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { cn } from '@web/lib/utils';
+import { t, type Locale } from '@shared/i18n';
 
 interface OnboardingSplashProps {
   museumName?: string;
@@ -16,6 +16,7 @@ interface OnboardingSplashProps {
   isConnected: boolean;
   onRetry: () => void;
   onDone: () => void;
+  locale?: Locale;
 }
 
 export default function OnboardingSplash({
@@ -24,6 +25,7 @@ export default function OnboardingSplash({
   isConnected,
   onRetry,
   onDone,
+  locale = 'ko',
 }: OnboardingSplashProps) {
   const [mounted, setMounted] = useState(false);
   const [showRetry, setShowRetry] = useState(false);
@@ -35,7 +37,6 @@ export default function OnboardingSplash({
     setMounted(true);
   }, []);
 
-  // Minimum display time (2s) + connected → fade out
   useEffect(() => {
     const minTimer = setTimeout(() => {
       setReadyToTransition(true);
@@ -43,28 +44,28 @@ export default function OnboardingSplash({
     return () => clearTimeout(minTimer);
   }, []);
 
-  // When both connected and min time passed → trigger fade out, then notify parent
   useEffect(() => {
     if (isConnected && readyToTransition) {
       setFadeOut(true);
-      const timer = setTimeout(() => onDone(), 500); // matches transition-opacity duration-500
+      const timer = setTimeout(() => onDone(), 500);
       return () => clearTimeout(timer);
     }
   }, [isConnected, readyToTransition, onDone]);
 
-  // Show "연결 중..." after 5s, retry after 15s
   useEffect(() => {
-    const t1 = setTimeout(() => setElapsedText('연결 중...'), 5000);
+    const t1 = setTimeout(() => setElapsedText(t('splash.connecting', locale)), 5000);
     const t2 = setTimeout(() => setShowRetry(true), 15000);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, []);
+  }, [locale]);
 
   const greeting = museumName
-    ? `${museumName}에 오신 것을 환영합니다`
-    : '탐험을 시작합니다';
+    ? locale === 'en'
+      ? `${t('splash.welcomeTo', locale)}${museumName}`
+      : `${museumName}${t('splash.welcomeTo', locale)}`
+    : t('splash.welcomeDefault', locale);
 
   return (
     <div
@@ -73,7 +74,6 @@ export default function OnboardingSplash({
         fadeOut ? 'opacity-0 pointer-events-none' : 'opacity-100',
       )}
     >
-      {/* Background: museum photo or gradient */}
       {museumPhotoUrl ? (
         <div
           className="absolute inset-0 bg-cover bg-center opacity-20 blur-sm"
@@ -86,17 +86,14 @@ export default function OnboardingSplash({
         />
       )}
 
-      {/* Dark overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80" />
 
-      {/* Content */}
       <div
         className={cn(
           'relative z-10 flex flex-col items-center gap-6 px-8 transition-all duration-700 ease-out',
           mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6',
         )}
       >
-        {/* Logo */}
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-timelens-gold/20 to-timelens-bronze/10
                         border border-timelens-gold/20 flex items-center justify-center animate-glow-pulse">
           <span className="text-2xl">🏛</span>
@@ -110,11 +107,10 @@ export default function OnboardingSplash({
             {greeting}
           </p>
           <p className="text-sm text-gray-500 text-center mt-1">
-            당신만의 AI 큐레이터가 준비되었습니다
+            {t('splash.subtitle', locale)}
           </p>
         </div>
 
-        {/* Loading indicator */}
         <div className="flex flex-col items-center gap-2 mt-4">
           {!showRetry ? (
             <>
@@ -136,14 +132,14 @@ export default function OnboardingSplash({
             </>
           ) : (
             <div className="flex flex-col items-center gap-3 animate-fade-in">
-              <span className="text-xs text-gray-500">연결에 시간이 걸리고 있습니다</span>
+              <span className="text-xs text-gray-500">{t('splash.slow', locale)}</span>
               <button
                 onClick={onRetry}
                 className="flex items-center gap-2 px-5 py-2.5 bg-timelens-gold/10 border border-timelens-gold/20
                            rounded-full text-sm text-timelens-gold font-medium active:scale-95 transition-transform"
               >
                 <RefreshCw className="w-4 h-4" />
-                다시 시도
+                {t('splash.retry', locale)}
               </button>
             </div>
           )}

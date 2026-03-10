@@ -1,17 +1,16 @@
 // ============================================================
 // 파일: src/app/session/page.tsx
-// 담당: Part 2
 // 역할: 메인 화면 — 대화 중심 UI + 온디맨드 카메라
-// 피봇: "Curator Friend" — 대화가 중심, 카메라는 보조
 // ============================================================
 
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mic, MicOff, BookOpen, Camera, CameraOff, Download } from 'lucide-react';
+import { Mic, MicOff, BookOpen, Camera, CameraOff, Download, LogOut } from 'lucide-react';
 import { cn } from '@web/lib/utils';
-import type { AgentType } from '@shared/types/common';
+import { useT } from '@web/lib/i18n';
+import type { Locale } from '@shared/i18n';
 import type { AgentSwitchData, MuseumContext } from '@shared/types/live-session';
 import { useLiveSession } from '@web/hooks/use-live-session';
 import { useGeolocation } from '@web/hooks/use-geolocation';
@@ -25,24 +24,13 @@ import TranscriptChat from '@web/components/TranscriptChat';
 import { RestorationOverlay } from '@web/components/RestorationOverlay';
 import NearbySites from '@web/components/NearbySites';
 import TopicChip from '@web/components/TopicChip';
-
-function getAgentSwitchReason(agent: AgentType): string {
-  switch (agent) {
-    case 'restoration':
-      return '시간여행을 시작합니다...';
-    case 'discovery':
-      return '주변 문화유산을 검색합니다';
-    case 'diary':
-      return '다이어리를 생성합니다';
-    default:
-      return '';
-  }
-}
+import LanguageSelector from '@web/components/LanguageSelector';
 
 export default function MainPage() {
   const {
     isConnected,
     connect,
+    disconnect,
     toggleMic,
     toggleCamera,
     requestTopicDetail,
@@ -60,14 +48,18 @@ export default function MainPage() {
 
   const router = useRouter();
   const geo = useGeolocation();
+  const { locale, setLocale, t } = useT();
 
-  // Local UI state
-  const [isMicOn, setIsMicOn] = useState(true);
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  // Onboarding flow state
+  const [languageSelected, setLanguageSelected] = useState(false);
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const [museumSelected, setMuseumSelected] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
   const [splashMuseum, setSplashMuseum] = useState<{ name?: string; photoUrl?: string }>({});
+
+  // Session UI state
+  const [isMicOn, setIsMicOn] = useState(true);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [agentTransition, setAgentTransition] = useState<AgentSwitchData | null>(null);
   const [isAgentTransitioning, setIsAgentTransitioning] = useState(false);
@@ -76,24 +68,28 @@ export default function MainPage() {
   const cameraViewRef = useRef<CameraViewRef>(null);
   const prevAgentRef = useRef(activeAgent);
 
-  // Permission granted → show museum selector (don't connect yet)
+  // ── Onboarding handlers ─────────────────────────────────
+
+  const handleLanguageSelect = useCallback((selected: Locale) => {
+    setLocale(selected);
+    setLanguageSelected(true);
+  }, [setLocale]);
+
   const handlePermissionsGranted = useCallback(() => {
     setPermissionsGranted(true);
   }, []);
 
-  // Shared connect helper
   const connectWithContext = useCallback(async (museum?: MuseumContext) => {
     const userLoc = geo.latitude && geo.longitude
       ? { lat: geo.latitude, lng: geo.longitude }
       : undefined;
     await connect({
-      language: navigator.language.split('-')[0] || 'en',
+      language: locale,
       museum,
       userLocation: userLoc,
     });
-  }, [connect, geo.latitude, geo.longitude]);
+  }, [connect, geo.latitude, geo.longitude, locale]);
 
-  // Museum selected → connect with context
   const handleMuseumSelect = useCallback(async (museum: MuseumContext) => {
     setMuseumSelected(true);
     setSplashMuseum({ name: museum.name, photoUrl: museum.photoUrl });
@@ -104,7 +100,6 @@ export default function MainPage() {
     }
   }, [connectWithContext]);
 
-  // Skip museum → connect without context
   const handleMuseumSkip = useCallback(async () => {
     setMuseumSelected(true);
     try {
@@ -114,7 +109,6 @@ export default function MainPage() {
     }
   }, [connectWithContext]);
 
-  // Retry connection from splash
   const handleRetry = useCallback(async () => {
     try {
       await connectWithContext();
@@ -123,43 +117,67 @@ export default function MainPage() {
     }
   }, [connectWithContext]);
 
-  // Agent switch detection
+  // ── Navigation handlers ─────────────────────────────────
+
+  const handleBack = useCallback(() => {
+    // Go back through onboarding steps
+    if (museumSelected) {
+      setMuseumSelected(false);
+      setSplashDone(false);
+      disconnect?.();
+    } else if (permissionsGranted) {
+      setPermissionsGranted(false);
+    } else if (languageSelected) {
+      setLanguageSelected(false);
+    }
+  }, [museumSelected, permissionsGranted, languageSelected, disconnect]);
+
+  const handleExit = useCallback(() => {
+    disconnect?.();
+    router.push('/');
+  }, [disconnect, router]);
+
+  // ── Session effects ─────────────────────────────────────
+
   useEffect(() => {
     if (prevAgentRef.current !== activeAgent) {
       setIsAgentTransitioning(true);
+      const reasons: Record<string, string> = {
+        restoration: t('agent.switch.restoration'),
+        discovery: t('agent.switch.discovery'),
+        diary: t('agent.switch.diary'),
+      };
       setAgentTransition({
         from: prevAgentRef.current,
         to: activeAgent,
-        reason: getAgentSwitchReason(activeAgent),
+        reason: reasons[activeAgent] ?? '',
       });
       prevAgentRef.current = activeAgent;
       const timer = setTimeout(() => setIsAgentTransitioning(false), 2000);
       return () => clearTimeout(timer);
     }
-  }, [activeAgent]);
+  }, [activeAgent, t]);
 
-  // Diary result → navigate
   useEffect(() => {
     if (diaryResult) {
       router.push(`/diary/${diaryResult.diaryId}`);
     }
   }, [diaryResult, router]);
 
-  // Action handlers
+  // ── Action handlers ─────────────────────────────────────
+
   const handleMicToggle = useCallback(() => {
     const newState = !isMicOn;
     setIsMicOn(newState);
     toggleMic(newState);
   }, [isMicOn, toggleMic]);
 
-  // 카메라 토글 (온디맨드)
   const handleCameraToggle = useCallback(() => {
     const newState = !isCameraOpen;
     setIsCameraOpen(newState);
     toggleCamera(newState);
   }, [isCameraOpen, toggleCamera]);
 
-  // 사진 캡처 → AI 전송
   const handleCapture = useCallback(() => {
     const photo = cameraViewRef.current?.capturePhoto();
     if (!photo) return;
@@ -173,7 +191,6 @@ export default function MainPage() {
     [requestTopicDetail]
   );
 
-  // 복원 이미지 다운로드
   const handleDownloadRestoration = useCallback(() => {
     if (restorationState.status !== 'ready') return;
     const url = restorationState.data.imageUrl;
@@ -182,9 +199,9 @@ export default function MainPage() {
     link.href = url;
     link.download = `timelens-restored-${Date.now()}.jpg`;
     link.click();
-    setShowSaved('복원 이미지 저장됨');
+    setShowSaved(t('session.saved'));
     setTimeout(() => setShowSaved(null), 2000);
-  }, [restorationState]);
+  }, [restorationState, t]);
 
   const handleTextSubmit = useCallback(() => {
     if (textInput.trim()) {
@@ -193,12 +210,19 @@ export default function MainPage() {
     }
   }, [textInput, sendTextMessage]);
 
-  // Permission gate
-  if (!permissionsGranted) {
-    return <PermissionGate onGranted={handlePermissionsGranted} />;
+  // ── Onboarding gates ────────────────────────────────────
+
+  // Step 1: Language selection
+  if (!languageSelected) {
+    return <LanguageSelector onSelect={handleLanguageSelect} />;
   }
 
-  // Museum selection gate
+  // Step 2: Permission gate
+  if (!permissionsGranted) {
+    return <PermissionGate onGranted={handlePermissionsGranted} onBack={handleBack} locale={locale} />;
+  }
+
+  // Step 3: Museum selection
   if (!museumSelected) {
     const userLocation = geo.latitude && geo.longitude
       ? { lat: geo.latitude, lng: geo.longitude }
@@ -208,13 +232,17 @@ export default function MainPage() {
         userLocation={userLocation}
         onSelect={handleMuseumSelect}
         onSkip={handleMuseumSkip}
+        onBack={handleBack}
+        locale={locale}
       />
     );
   }
 
+  // ── Main session UI ─────────────────────────────────────
+
   return (
     <div className="relative flex flex-col w-full h-full bg-gray-950">
-      {/* Onboarding splash — stays mounted during fade-out */}
+      {/* Onboarding splash */}
       {museumSelected && !splashDone && (
         <OnboardingSplash
           museumName={splashMuseum.name}
@@ -222,18 +250,31 @@ export default function MainPage() {
           isConnected={isConnected}
           onRetry={handleRetry}
           onDone={() => setSplashDone(true)}
+          locale={locale}
         />
       )}
 
       {/* === Glass Header === */}
       <div className="shrink-0 relative z-10 px-4 pt-safe-top">
         <div className="glass-strong rounded-2xl px-4 py-3 mt-2">
-          <div className="relative">
-            <AgentIndicator
-              activeAgent={activeAgent}
-              switchData={agentTransition ?? undefined}
-              isTransitioning={isAgentTransitioning}
-            />
+          <div className="flex items-center gap-2">
+            {/* Exit button */}
+            <button
+              onClick={handleExit}
+              className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/[0.06]
+                         flex items-center justify-center hover:bg-white/10 transition-colors"
+              aria-label={t('session.exit')}
+            >
+              <LogOut className="w-3.5 h-3.5 text-gray-400" />
+            </button>
+            <div className="flex-1 relative">
+              <AgentIndicator
+                activeAgent={activeAgent}
+                switchData={agentTransition ?? undefined}
+                isTransitioning={isAgentTransitioning}
+                locale={locale}
+              />
+            </div>
           </div>
           <AudioVisualizer state={audioState} />
         </div>
@@ -241,7 +282,7 @@ export default function MainPage() {
 
       {/* === Main: Conversation + Inline cards === */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {/* Artifact summary card (인식 시 표시) */}
+        {/* Artifact summary card */}
         {currentArtifact && (
           <div className="shrink-0 mx-4 mt-3 p-3.5 glass rounded-2xl animate-discover-slide-up">
             <h3 className="text-base font-heading font-bold text-white">{currentArtifact.name}</h3>
@@ -250,8 +291,6 @@ export default function MainPage() {
               {currentArtifact.architectureStyle && ` · ${currentArtifact.architectureStyle}`}
             </p>
             <p className="text-sm text-gray-200 mt-1.5 italic">{currentArtifact.oneLiner}</p>
-
-            {/* Topic chips */}
             <div className="flex gap-1.5 mt-2.5 overflow-x-auto scrollbar-hide">
               {currentArtifact.topics.map((topic) => (
                 <TopicChip
@@ -264,18 +303,20 @@ export default function MainPage() {
           </div>
         )}
 
-        {/* Restoration result (복원 완료 시) */}
+        {/* Restoration result */}
         {restorationState.status === 'ready' && !isCameraOpen && (
           <div className="shrink-0 mx-4 mt-2 p-3 glass rounded-2xl border-timelens-gold/10">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-timelens-gold font-semibold tracking-wide uppercase">복원 완료</span>
+              <span className="text-xs text-timelens-gold font-semibold tracking-wide uppercase">
+                {t('session.restorationDone')}
+              </span>
               <button
                 onClick={handleDownloadRestoration}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-timelens-gold/10 rounded-full text-xs text-timelens-gold
                            active:scale-95 transition-transform border border-timelens-gold/20"
               >
                 <Download className="w-3 h-3" />
-                저장
+                {t('session.save')}
               </button>
             </div>
           </div>
@@ -284,17 +325,17 @@ export default function MainPage() {
         {/* Discovery sites */}
         {discoverySites.length > 0 && (
           <div className="shrink-0 mx-4 mt-2">
-            <NearbySites sites={discoverySites} />
+            <NearbySites sites={discoverySites} locale={locale} />
           </div>
         )}
 
         {/* Chat transcript */}
         <div className="flex-1 overflow-hidden px-4 py-3">
-          <TranscriptChat chunks={transcript} isStreaming={audioState === 'speaking'} />
+          <TranscriptChat chunks={transcript} isStreaming={audioState === 'speaking'} locale={locale} />
         </div>
       </div>
 
-      {/* === Camera PIP (compact, above input bar) === */}
+      {/* === Camera PIP === */}
       {isCameraOpen && (
         <div className="shrink-0 mx-4 mb-2 relative rounded-2xl overflow-hidden" style={{ height: '28dvh' }}>
           <CameraView
@@ -304,17 +345,14 @@ export default function MainPage() {
             isBlurred={false}
             onCapturePhoto={() => cameraViewRef.current?.capturePhoto() ?? ''}
           />
-
-          <RestorationOverlay state={restorationState} beforeImage={beforeImage} />
-
-          {/* Capture button */}
+          <RestorationOverlay state={restorationState} beforeImage={beforeImage} locale={locale} />
           <div className="absolute bottom-3 left-0 right-0 flex justify-center z-10">
             <button
               onClick={handleCapture}
               className="px-5 py-2 bg-timelens-gold/90 text-black rounded-full font-semibold text-xs
                          active:scale-95 transition-transform shadow-lg shadow-timelens-gold/30"
             >
-              이거 봐봐
+              {t('session.capture')}
             </button>
           </div>
         </div>
@@ -322,14 +360,13 @@ export default function MainPage() {
 
       {/* === Bottom: Glass Input Bar === */}
       <div className="shrink-0 pb-safe-bottom glass-strong rounded-t-2xl">
-        {/* Text input */}
         <div className="flex items-center gap-2 px-4 py-2.5">
           <input
             type="text"
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleTextSubmit()}
-            placeholder="메시지를 입력하세요..."
+            placeholder={t('session.inputPlaceholder')}
             className="flex-1 px-4 py-2.5 bg-white/[0.06] rounded-full text-white text-sm
                        placeholder:text-gray-500 outline-none focus:ring-1 focus:ring-timelens-gold/30
                        border border-white/[0.06]"
@@ -339,11 +376,10 @@ export default function MainPage() {
             className="px-4 py-2.5 bg-timelens-gold text-black rounded-full font-semibold text-xs
                        active:scale-95 transition-transform"
           >
-            전송
+            {t('session.send')}
           </button>
         </div>
 
-        {/* Action buttons — mic center emphasis */}
         <div className="flex items-center justify-center gap-6 px-4 pb-3">
           {/* Camera toggle */}
           <button
@@ -354,12 +390,12 @@ export default function MainPage() {
                 ? 'bg-timelens-gold/15 text-timelens-gold border border-timelens-gold/30'
                 : 'bg-white/[0.06] text-gray-400 border border-white/[0.06] hover:bg-white/10',
             )}
-            aria-label={isCameraOpen ? '카메라 닫기' : '카메라 열기'}
+            aria-label={isCameraOpen ? t('session.cameraClose') : t('session.cameraOpen')}
           >
             {isCameraOpen ? <CameraOff className="w-4.5 h-4.5" /> : <Camera className="w-4.5 h-4.5" />}
           </button>
 
-          {/* Mic toggle — center, larger, with ripple */}
+          {/* Mic toggle */}
           <div className="relative">
             {isMicOn && audioState === 'listening' && (
               <>
@@ -375,7 +411,7 @@ export default function MainPage() {
                   ? 'bg-timelens-gold/20 text-timelens-gold border-2 border-timelens-gold/40 shadow-lg shadow-timelens-gold/10'
                   : 'bg-red-500/90 text-white shadow-lg shadow-red-500/30',
               )}
-              aria-label={isMicOn ? '마이크 끄기' : '마이크 켜기'}
+              aria-label={isMicOn ? t('session.micOff') : t('session.micOn')}
             >
               {isMicOn ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
             </button>
@@ -383,10 +419,10 @@ export default function MainPage() {
 
           {/* Diary */}
           <button
-            onClick={() => sendTextMessage('다이어리 만들어줘')}
+            onClick={() => sendTextMessage(t('session.diaryPrompt'))}
             className="w-11 h-11 rounded-full bg-white/[0.06] border border-white/[0.06] flex items-center justify-center
                        hover:bg-white/10 transition-colors"
-            aria-label="다이어리"
+            aria-label={t('session.diary')}
           >
             <BookOpen className="w-4.5 h-4.5 text-gray-400" />
           </button>

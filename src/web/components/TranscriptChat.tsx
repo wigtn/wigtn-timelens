@@ -1,7 +1,6 @@
 // ============================================================
-// 파일: src/components/TranscriptChat.tsx
-// 담당: Part 2
-// 역할: 채팅형 트랜스크립트 — 프리미엄 버블 + AI 아바타 + 타이핑 인디케이터
+// 파일: src/web/components/TranscriptChat.tsx
+// 역할: 채팅형 트랜스크립트
 // ============================================================
 
 'use client';
@@ -10,13 +9,13 @@ import { memo, useRef, useState, useEffect, useCallback } from 'react';
 import type { TranscriptProps } from '@shared/types/components';
 import type { TranscriptChunk } from '@shared/types/live-session';
 import { cn } from '@web/lib/utils';
+import { t, type Locale } from '@shared/i18n';
 
-const ChatBubble = memo(function ChatBubble({ chunk }: { chunk: TranscriptChunk }) {
+const ChatBubble = memo(function ChatBubble({ chunk, locale = 'ko' }: { chunk: TranscriptChunk; locale?: Locale }) {
   const isUser = chunk.role === 'user';
 
   return (
     <div className={cn('flex gap-2 animate-msg-fade-in', isUser ? 'justify-end' : 'justify-start')}>
-      {/* AI avatar */}
       {!isUser && (
         <div className="shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-timelens-gold/30 to-timelens-bronze/20
                         border border-timelens-gold/20 flex items-center justify-center mt-0.5">
@@ -42,7 +41,7 @@ const ChatBubble = memo(function ChatBubble({ chunk }: { chunk: TranscriptChunk 
 
         {chunk.sources && chunk.sources.length > 0 && (
           <div className="mt-2 pt-2 border-t border-white/[0.06]">
-            <span className="text-[10px] text-gray-500 italic">via Google Search</span>
+            <span className="text-[10px] text-gray-500 italic">{t('chat.sources', locale)}</span>
           </div>
         )}
       </div>
@@ -76,7 +75,7 @@ function TypingIndicator() {
   );
 }
 
-export default function TranscriptChat({ chunks, isStreaming }: TranscriptProps) {
+export default function TranscriptChat({ chunks, isStreaming, locale = 'ko' }: TranscriptProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isAutoScroll, setIsAutoScroll] = useState(true);
 
@@ -102,12 +101,12 @@ export default function TranscriptChat({ chunks, isStreaming }: TranscriptProps)
       {chunks.length === 0 && !isStreaming && (
         <div className="flex flex-col items-center justify-center h-full opacity-40">
           <span className="text-2xl mb-2">🏛</span>
-          <span className="text-xs text-gray-500">대화가 곧 시작됩니다</span>
+          <span className="text-xs text-gray-500">{t('chat.empty', locale)}</span>
         </div>
       )}
 
       {chunks.map((chunk) => (
-        <ChatBubble key={chunk.id} chunk={chunk} />
+        <ChatBubble key={chunk.id} chunk={chunk} locale={locale} />
       ))}
 
       {isStreaming && <TypingIndicator />}

@@ -1,14 +1,13 @@
 // ============================================================
-// 파일: src/components/NearbySites.tsx
-// 담당: Part 4
+// 파일: src/web/components/NearbySites.tsx
 // 역할: 주변 유적지 리스트
-// 출처: part4-discovery-diary.md §2.7
 // ============================================================
 
 'use client';
 
 import { MapPin, RefreshCw } from 'lucide-react';
 import { cn } from '@web/lib/utils';
+import { t, type Locale } from '@shared/i18n';
 import NearbyCard from './NearbyCard';
 import type { NearbyPlace } from '@shared/types/discovery';
 
@@ -18,6 +17,7 @@ export interface NearbySitesProps {
   error?: string | null;
   onRetry?: () => void;
   onSiteTap?: (place: NearbyPlace) => void;
+  locale?: Locale;
 }
 
 export default function NearbySites({
@@ -26,13 +26,14 @@ export default function NearbySites({
   error,
   onRetry,
   onSiteTap,
+  locale = 'ko',
 }: NearbySitesProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="flex items-center gap-2 text-white/60">
           <RefreshCw className="w-4 h-4 animate-spin" />
-          <span className="text-sm">주변 문화유산 검색 중...</span>
+          <span className="text-sm">{t('nearby.loading', locale)}</span>
         </div>
       </div>
     );
@@ -47,7 +48,7 @@ export default function NearbySites({
             onClick={onRetry}
             className="px-4 py-2 text-sm bg-white/10 rounded-full text-white/80 active:bg-white/20"
           >
-            다시 시도
+            {t('nearby.retry', locale)}
           </button>
         )}
       </div>
@@ -58,7 +59,7 @@ export default function NearbySites({
     return (
       <div className="flex flex-col items-center gap-2 py-8 text-white/50">
         <MapPin className="w-6 h-6" />
-        <p className="text-sm">주변에 문화유산이 없습니다</p>
+        <p className="text-sm">{t('nearby.empty', locale)}</p>
       </div>
     );
   }
@@ -66,7 +67,7 @@ export default function NearbySites({
   return (
     <div className="space-y-3">
       <h2 className="text-sm font-medium text-white/80 px-1">
-        주변 문화유산 ({sites.length}곳)
+        {t('nearby.title', locale)} ({sites.length})
       </h2>
       <div
         className={cn(
@@ -83,7 +84,6 @@ export default function NearbySites({
           />
         ))}
       </div>
-
     </div>
   );
 }
