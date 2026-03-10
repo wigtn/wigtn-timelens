@@ -32,6 +32,8 @@ export class LiveSession {
   private resumeHandle: string | null = null;
   private pendingToolCalls: Map<string, { name: string; startTime: number }> = new Map();
   private onAudioData: ((base64: string) => void) | null = null;
+  private onCaptureFrame: (() => string | null) | null = null;
+  private agentReturnTimer: ReturnType<typeof setTimeout> | null = null;
   private userId = '';
   private visits: DiaryVisitInput[] = [];
 
@@ -162,6 +164,10 @@ export class LiveSession {
 
   setAudioDataHandler(handler: (base64: string) => void): void {
     this.onAudioData = handler;
+  }
+
+  setFrameCaptureHandler(handler: () => string | null): void {
+    this.onCaptureFrame = handler;
   }
 
   setUserId(uid: string): void {
@@ -324,6 +330,12 @@ export class LiveSession {
     this.switchAgent('restoration', '복원 이미지를 생성합니다');
     this.updateAudioState('generating');
 
+    // Capture current camera frame as before-image
+    const beforeFrame = this.onCaptureFrame?.();
+    const referenceImageUrl = beforeFrame
+      ? `data:image/jpeg;base64,${beforeFrame}`
+      : undefined;
+
     try {
       const response = await fetch('/api/restore', {
         method: 'POST',
@@ -338,6 +350,7 @@ export class LiveSession {
           currentDescription: fc.args.current_description,
         }),
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const result = await response.json();
 
       if (result.success) {
@@ -349,6 +362,7 @@ export class LiveSession {
             description: result.description,
             artifactName: fc.args.artifact_name,
             era: fc.args.era,
+            referenceImageUrl,
           },
         });
         this.session?.sendToolResponse({
@@ -384,6 +398,7 @@ export class LiveSession {
       if (fc.args.interest_filter) params.set('type', fc.args.interest_filter);
 
       const response = await fetch(`/api/discover?${params.toString()}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const result = await response.json();
 
       if (result.success) {
@@ -429,6 +444,7 @@ export class LiveSession {
           visits: this.visits,
         }),
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const result = await response.json();
 
       if (result.success) {
@@ -505,7 +521,9 @@ export class LiveSession {
   }
 
   private scheduleAgentReturn(): void {
-    setTimeout(() => {
+    if (this.agentReturnTimer) clearTimeout(this.agentReturnTimer);
+    this.agentReturnTimer = setTimeout(() => {
+      this.agentReturnTimer = null;
       if (this.state.activeAgent !== 'curator') {
         const from = this.state.activeAgent;
         this.state.activeAgent = 'curator';

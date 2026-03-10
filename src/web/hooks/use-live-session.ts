@@ -377,6 +377,9 @@ export function useLiveSession(): UseLiveSessionReturn {
         liveSessionRef.current?.sendVideoFrame(base64Jpeg);
       });
 
+      // 9b. Frame capture handler for restoration before-image
+      liveSession.setFrameCaptureHandler(() => cameraCapture.captureFrame());
+
       // 10. 상태 업데이트
       setSessionState(prev => ({ ...prev, sessionId, status: 'connected' }));
     } catch (err) {
@@ -447,6 +450,17 @@ export function useLiveSession(): UseLiveSessionReturn {
     setRestorationState({ status: 'idle' });
     setDiscoverySites([]);
     setDiaryResult(null);
+  }, []);
+
+  // ── unmount cleanup ──────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      reconnectRef.current?.cancel();
+      cameraCaptureRef.current?.stop();
+      audioCaptureRef.current?.stop();
+      audioPlaybackRef.current?.stop();
+      liveSessionRef.current?.disconnect();
+    };
   }, []);
 
   // ── 반환 ──────────────────────────────────────────────────
