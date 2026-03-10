@@ -91,6 +91,7 @@ export async function POST(
       generationTimeMs,
     });
   } catch (error) {
+    console.error('[/api/restore] Error:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
 
     let code: RestorationErrorResponse['code'] = 'GENERATION_FAILED';

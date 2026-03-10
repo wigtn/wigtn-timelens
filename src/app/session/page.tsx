@@ -269,7 +269,7 @@ export default function MainPage() {
             type="text"
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
+            onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleTextSubmit()}
             placeholder="메시지를 입력하세요..."
             className="flex-1 px-4 py-3 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm
                        placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-timelens-gold/40

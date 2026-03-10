@@ -123,15 +123,24 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
     },
 
     onUserSpeech: (data) => {
-      setters.setTranscript(prev => [
-        ...prev,
-        {
-          id: `u-${Date.now()}`,
-          role: 'user',
-          text: data.text,
-          timestamp: Date.now(),
-        },
-      ]);
+      setters.setTranscript(prev => {
+        // 중복 방지: 최근 2초 내 같은 텍스트 또는 서브스트링이면 무시
+        const last = prev[prev.length - 1];
+        if (last && last.role === 'user' && Date.now() - last.timestamp < 2000) {
+          if (last.text.includes(data.text) || data.text.includes(last.text)) {
+            return prev;
+          }
+        }
+        return [
+          ...prev,
+          {
+            id: `u-${Date.now()}`,
+            role: 'user',
+            text: data.text,
+            timestamp: Date.now(),
+          },
+        ];
+      });
     },
 
     onAgentSwitch: (data) => {

@@ -169,8 +169,19 @@ export async function generateRestorationImage(
     ),
   ]);
 
-  // 응답 파싱
-  const parts = response.candidates?.[0]?.content?.parts;
+  // 안전 필터 / 빈 응답 체크
+  const candidate = response.candidates?.[0];
+  const finishReason = candidate?.finishReason;
+
+  if (finishReason === 'SAFETY') {
+    throw new Error('CONTENT_FILTERED: blocked by safety filters');
+  }
+
+  if (response.promptFeedback?.blockReason) {
+    throw new Error(`CONTENT_FILTERED: ${response.promptFeedback.blockReason}`);
+  }
+
+  const parts = candidate?.content?.parts;
   if (!parts || parts.length === 0) {
     throw new Error('GENERATION_FAILED: No parts in response');
   }

@@ -140,7 +140,7 @@ export class LiveSession {
     });
   }
 
-  requestTopicDetail(topicId: string, topicLabel: string): void {
+  requestTopicDetail(_topicId: string, topicLabel: string): void {
     if (!this.session || this.state.status !== 'connected') return;
     const artifactName = this.state.currentArtifact?.name || 'the current artifact';
     this.session.sendClientContent({
@@ -377,34 +377,39 @@ export class LiveSession {
           currentDescription: fc.args.current_description,
         }),
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
       const result = await response.json();
 
-      if (result.success) {
-        this.events.onToolResult({
-          tool: 'generate_restoration',
-          result: {
-            type: 'restoration',
-            imageUrl: result.imageUrl,
-            description: result.description,
-            artifactName: fc.args.artifact_name,
-            era: fc.args.era,
-            referenceImageUrl,
-          },
-        });
-        this.session?.sendToolResponse({
-          functionResponses: [{
-            id: fc.id, name: fc.name,
-            response: { status: 'success', image_url: result.imageUrl, description: result.description },
-          }],
-        });
-      } else {
-        this.sendToolErrorResponse(fc.id, fc.name, result.error || 'Restoration failed');
-        this.emitError('RESTORATION_FAILED', result.error || 'Failed', true, 'retry');
+      if (!response.ok || !result.success) {
+        const errMsg = result.error || `HTTP ${response.status}`;
+        const errCode = result.code || 'RESTORATION_FAILED';
+        const retryable = result.retryable !== false;
+        this.sendToolErrorResponse(fc.id, fc.name, errMsg);
+        this.emitError(errCode, errMsg, retryable, retryable ? 'retry' : 'manual');
+        return;
       }
-    } catch {
-      this.sendToolErrorResponse(fc.id, fc.name, 'Network error');
-      this.emitError('NETWORK_ERROR', 'Failed to reach restoration service', true, 'retry');
+
+      this.events.onToolResult({
+        tool: 'generate_restoration',
+        result: {
+          type: 'restoration',
+          imageUrl: result.imageUrl,
+          description: result.description,
+          artifactName: fc.args.artifact_name,
+          era: fc.args.era,
+          referenceImageUrl,
+        },
+      });
+      this.session?.sendToolResponse({
+        functionResponses: [{
+          id: fc.id, name: fc.name,
+          response: { status: 'success', image_url: result.imageUrl, description: result.description },
+        }],
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Network error';
+      this.sendToolErrorResponse(fc.id, fc.name, msg);
+      this.emitError('NETWORK_ERROR', msg, true, 'retry');
     } finally {
       this.pendingToolCalls.delete(fc.id);
       this.scheduleAgentReturn();
