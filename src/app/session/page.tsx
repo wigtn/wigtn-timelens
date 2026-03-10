@@ -66,6 +66,7 @@ export default function MainPage() {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const [museumSelected, setMuseumSelected] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
   const [splashMuseum, setSplashMuseum] = useState<{ name?: string; photoUrl?: string }>({});
   const [textInput, setTextInput] = useState('');
   const [agentTransition, setAgentTransition] = useState<AgentSwitchData | null>(null);
@@ -213,13 +214,14 @@ export default function MainPage() {
 
   return (
     <div className="relative flex flex-col w-full h-full bg-gray-950">
-      {/* Onboarding splash (replaces connection overlay) */}
-      {!isConnected && museumSelected && (
+      {/* Onboarding splash — stays mounted during fade-out */}
+      {museumSelected && !splashDone && (
         <OnboardingSplash
           museumName={splashMuseum.name}
           museumPhotoUrl={splashMuseum.photoUrl}
           isConnected={isConnected}
           onRetry={handleRetry}
+          onDone={() => setSplashDone(true)}
         />
       )}
 

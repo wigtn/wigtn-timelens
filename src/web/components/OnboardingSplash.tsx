@@ -15,6 +15,7 @@ interface OnboardingSplashProps {
   museumPhotoUrl?: string;
   isConnected: boolean;
   onRetry: () => void;
+  onDone: () => void;
 }
 
 export default function OnboardingSplash({
@@ -22,6 +23,7 @@ export default function OnboardingSplash({
   museumPhotoUrl,
   isConnected,
   onRetry,
+  onDone,
 }: OnboardingSplashProps) {
   const [mounted, setMounted] = useState(false);
   const [showRetry, setShowRetry] = useState(false);
@@ -41,12 +43,14 @@ export default function OnboardingSplash({
     return () => clearTimeout(minTimer);
   }, []);
 
-  // When both connected and min time passed → trigger fade out
+  // When both connected and min time passed → trigger fade out, then notify parent
   useEffect(() => {
     if (isConnected && readyToTransition) {
       setFadeOut(true);
+      const timer = setTimeout(() => onDone(), 500); // matches transition-opacity duration-500
+      return () => clearTimeout(timer);
     }
-  }, [isConnected, readyToTransition]);
+  }, [isConnected, readyToTransition, onDone]);
 
   // Show "연결 중..." after 5s, retry after 15s
   useEffect(() => {
