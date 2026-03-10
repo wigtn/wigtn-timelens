@@ -17,10 +17,12 @@ interface MuseumInfo {
   name: string;
   address?: string;
   location: { lat: number; lng: number };
+  /** Distance in meters (nearby API uses distanceMeters, search uses distance) */
   distanceMeters?: number;
   distance?: number;
   photoUrl?: string;
   rating?: number;
+  /** Open status (nearby API uses isOpen, search uses openNow) */
   openNow?: boolean;
   isOpen?: boolean;
   type?: string;
@@ -105,17 +107,25 @@ export default function MuseumSelector({ userLocation, onSelect, onSkip }: Museu
   // GPS 기반 근처 박물관 로드
   useEffect(() => {
     if (!userLocation) return;
+    const controller = new AbortController();
     setIsLoadingNearby(true);
     setNearbyError(false);
 
-    fetch(`/api/museums/nearby?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=2000`)
+    fetch(`/api/museums/nearby?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=2000`, {
+      signal: controller.signal,
+    })
       .then((res) => res.json())
       .then((data) => {
-        if (data.success) setNearbyMuseums(data.museums ?? []);
+        if (data.success) setNearbyMuseums(data.data?.museums ?? []);
         else setNearbyError(true);
       })
-      .catch(() => setNearbyError(true))
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        setNearbyError(true);
+      })
       .finally(() => setIsLoadingNearby(false));
+
+    return () => controller.abort();
   }, [userLocation]);
 
   const handleSearch = useCallback(async () => {
@@ -125,7 +135,7 @@ export default function MuseumSelector({ userLocation, onSelect, onSkip }: Museu
     try {
       const res = await fetch(`/api/museums/search?q=${encodeURIComponent(searchQuery.trim())}`);
       const data = await res.json();
-      if (data.success) setSearchResults(data.museums ?? []);
+      if (data.success) setSearchResults(data.data?.museums ?? []);
     } catch {
       // 검색 실패 시 무시
     } finally {

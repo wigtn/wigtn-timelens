@@ -80,54 +80,47 @@ export default function MainPage() {
     setPermissionsGranted(true);
   }, []);
 
+  // Shared connect helper
+  const connectWithContext = useCallback(async (museum?: MuseumContext) => {
+    const userLoc = geo.latitude && geo.longitude
+      ? { lat: geo.latitude, lng: geo.longitude }
+      : undefined;
+    await connect({
+      language: navigator.language.split('-')[0] || 'en',
+      museum,
+      userLocation: userLoc,
+    });
+  }, [connect, geo.latitude, geo.longitude]);
+
   // Museum selected → connect with context
   const handleMuseumSelect = useCallback(async (museum: MuseumContext) => {
     setMuseumSelected(true);
     setSplashMuseum({ name: museum.name, photoUrl: museum.photoUrl });
     try {
-      const userLoc = geo.latitude && geo.longitude
-        ? { lat: geo.latitude, lng: geo.longitude }
-        : undefined;
-      await connect({
-        language: navigator.language.split('-')[0] || 'en',
-        museum,
-        userLocation: userLoc,
-      });
+      await connectWithContext(museum);
     } catch (error) {
       console.error('Failed to connect:', error);
     }
-  }, [connect, geo.latitude, geo.longitude]);
+  }, [connectWithContext]);
 
   // Skip museum → connect without context
   const handleMuseumSkip = useCallback(async () => {
     setMuseumSelected(true);
     try {
-      const userLoc = geo.latitude && geo.longitude
-        ? { lat: geo.latitude, lng: geo.longitude }
-        : undefined;
-      await connect({
-        language: navigator.language.split('-')[0] || 'en',
-        userLocation: userLoc,
-      });
+      await connectWithContext();
     } catch (error) {
       console.error('Failed to connect:', error);
     }
-  }, [connect, geo.latitude, geo.longitude]);
+  }, [connectWithContext]);
 
   // Retry connection from splash
   const handleRetry = useCallback(async () => {
     try {
-      const userLoc = geo.latitude && geo.longitude
-        ? { lat: geo.latitude, lng: geo.longitude }
-        : undefined;
-      await connect({
-        language: navigator.language.split('-')[0] || 'en',
-        userLocation: userLoc,
-      });
+      await connectWithContext();
     } catch (error) {
       console.error('Retry failed:', error);
     }
-  }, [connect, geo.latitude, geo.longitude]);
+  }, [connectWithContext]);
 
   // Agent switch detection
   useEffect(() => {
