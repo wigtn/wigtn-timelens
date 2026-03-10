@@ -9,15 +9,18 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mic, MicOff, BookOpen, Camera, CameraOff, Loader2, Download } from 'lucide-react';
+import { Mic, MicOff, BookOpen, Camera, CameraOff, Download } from 'lucide-react';
 import { cn } from '@web/lib/utils';
 import type { AgentType } from '@shared/types/common';
-import type { AgentSwitchData } from '@shared/types/live-session';
+import type { AgentSwitchData, MuseumContext } from '@shared/types/live-session';
 import { useLiveSession } from '@web/hooks/use-live-session';
+import { useGeolocation } from '@web/hooks/use-geolocation';
 import CameraView, { type CameraViewRef } from '@web/components/CameraView';
 import AgentIndicator from '@web/components/AgentIndicator';
 import AudioVisualizer from '@web/components/AudioVisualizer';
 import PermissionGate from '@web/components/PermissionGate';
+import MuseumSelector from '@web/components/MuseumSelector';
+import OnboardingSplash from '@web/components/OnboardingSplash';
 import TranscriptChat from '@web/components/TranscriptChat';
 import { RestorationOverlay } from '@web/components/RestorationOverlay';
 import NearbySites from '@web/components/NearbySites';
@@ -56,11 +59,14 @@ export default function MainPage() {
   } = useLiveSession();
 
   const router = useRouter();
+  const geo = useGeolocation();
 
   // Local UI state
   const [isMicOn, setIsMicOn] = useState(true);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [permissionsGranted, setPermissionsGranted] = useState(false);
+  const [museumSelected, setMuseumSelected] = useState(false);
+  const [splashMuseum, setSplashMuseum] = useState<{ name?: string; photoUrl?: string }>({});
   const [textInput, setTextInput] = useState('');
   const [agentTransition, setAgentTransition] = useState<AgentSwitchData | null>(null);
   const [isAgentTransitioning, setIsAgentTransitioning] = useState(false);
@@ -69,15 +75,59 @@ export default function MainPage() {
   const cameraViewRef = useRef<CameraViewRef>(null);
   const prevAgentRef = useRef(activeAgent);
 
-  // Permission → session connect
-  const handlePermissionsGranted = useCallback(async () => {
+  // Permission granted → show museum selector (don't connect yet)
+  const handlePermissionsGranted = useCallback(() => {
     setPermissionsGranted(true);
+  }, []);
+
+  // Museum selected → connect with context
+  const handleMuseumSelect = useCallback(async (museum: MuseumContext) => {
+    setMuseumSelected(true);
+    setSplashMuseum({ name: museum.name, photoUrl: museum.photoUrl });
     try {
-      await connect({ language: navigator.language.split('-')[0] || 'en' });
+      const userLoc = geo.latitude && geo.longitude
+        ? { lat: geo.latitude, lng: geo.longitude }
+        : undefined;
+      await connect({
+        language: navigator.language.split('-')[0] || 'en',
+        museum,
+        userLocation: userLoc,
+      });
     } catch (error) {
       console.error('Failed to connect:', error);
     }
-  }, [connect]);
+  }, [connect, geo.latitude, geo.longitude]);
+
+  // Skip museum → connect without context
+  const handleMuseumSkip = useCallback(async () => {
+    setMuseumSelected(true);
+    try {
+      const userLoc = geo.latitude && geo.longitude
+        ? { lat: geo.latitude, lng: geo.longitude }
+        : undefined;
+      await connect({
+        language: navigator.language.split('-')[0] || 'en',
+        userLocation: userLoc,
+      });
+    } catch (error) {
+      console.error('Failed to connect:', error);
+    }
+  }, [connect, geo.latitude, geo.longitude]);
+
+  // Retry connection from splash
+  const handleRetry = useCallback(async () => {
+    try {
+      const userLoc = geo.latitude && geo.longitude
+        ? { lat: geo.latitude, lng: geo.longitude }
+        : undefined;
+      await connect({
+        language: navigator.language.split('-')[0] || 'en',
+        userLocation: userLoc,
+      });
+    } catch (error) {
+      console.error('Retry failed:', error);
+    }
+  }, [connect, geo.latitude, geo.longitude]);
 
   // Agent switch detection
   useEffect(() => {
@@ -154,72 +204,60 @@ export default function MainPage() {
     return <PermissionGate onGranted={handlePermissionsGranted} />;
   }
 
+  // Museum selection gate
+  if (!museumSelected) {
+    const userLocation = geo.latitude && geo.longitude
+      ? { lat: geo.latitude, lng: geo.longitude }
+      : null;
+    return (
+      <MuseumSelector
+        userLocation={userLocation}
+        onSelect={handleMuseumSelect}
+        onSkip={handleMuseumSkip}
+      />
+    );
+  }
+
   return (
     <div className="relative flex flex-col w-full h-full bg-gray-950">
-      {/* Connection overlay */}
-      {!isConnected && permissionsGranted && (
-        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md">
-          <div className="flex flex-col items-center gap-4">
-            <span className="text-3xl font-heading font-bold text-timelens-gold animate-pulse">
-              TimeLens
-            </span>
-            <Loader2 className="w-8 h-8 text-timelens-gold animate-spin" />
-            <span className="text-sm text-gray-400">AI 큐레이터에 연결 중...</span>
-          </div>
-        </div>
+      {/* Onboarding splash (replaces connection overlay) */}
+      {!isConnected && museumSelected && (
+        <OnboardingSplash
+          museumName={splashMuseum.name}
+          museumPhotoUrl={splashMuseum.photoUrl}
+          isConnected={isConnected}
+          onRetry={handleRetry}
+        />
       )}
 
-      {/* === Top: Camera PIP (온디맨드, 접을 수 있음) === */}
-      {isCameraOpen && (
-        <div className="relative w-full shrink-0" style={{ height: '35dvh' }}>
-          <CameraView
-            ref={cameraViewRef}
-            isScanning={false}
-            isRecognized={!!currentArtifact}
-            isBlurred={false}
-            onCapturePhoto={() => cameraViewRef.current?.capturePhoto() ?? ''}
-          />
-
-          {/* Restoration overlay on camera */}
-          <RestorationOverlay state={restorationState} beforeImage={beforeImage} />
-
-          {/* 캡처 버튼 (카메라 위) */}
-          <div className="absolute bottom-3 left-0 right-0 flex justify-center z-10">
-            <button
-              onClick={handleCapture}
-              className="px-6 py-2.5 bg-timelens-gold/90 text-black rounded-full font-medium text-sm
-                         active:scale-95 transition-transform shadow-lg shadow-timelens-gold/30"
-            >
-              이거 봐봐
-            </button>
+      {/* === Glass Header === */}
+      <div className="shrink-0 relative z-10 px-4 pt-safe-top">
+        <div className="glass-strong rounded-2xl px-4 py-3 mt-2">
+          <div className="relative">
+            <AgentIndicator
+              activeAgent={activeAgent}
+              switchData={agentTransition ?? undefined}
+              isTransitioning={isAgentTransitioning}
+            />
           </div>
-        </div>
-      )}
-
-      {/* === Middle: Conversation Area (메인) === */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {/* Agent indicator */}
-        <div className="shrink-0 px-4 pt-3">
-          <AgentIndicator
-            activeAgent={activeAgent}
-            switchData={agentTransition ?? undefined}
-            isTransitioning={isAgentTransitioning}
-          />
           <AudioVisualizer state={audioState} />
         </div>
+      </div>
 
+      {/* === Main: Conversation + Inline cards === */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Artifact summary card (인식 시 표시) */}
         {currentArtifact && (
-          <div className="shrink-0 mx-4 mt-2 p-3 bg-gray-900/80 rounded-2xl border border-white/[0.08]">
-            <h3 className="text-lg font-heading font-bold text-white">{currentArtifact.name}</h3>
-            <p className="text-xs text-gray-400 mt-0.5">
+          <div className="shrink-0 mx-4 mt-3 p-3.5 glass rounded-2xl animate-discover-slide-up">
+            <h3 className="text-base font-heading font-bold text-white">{currentArtifact.name}</h3>
+            <p className="text-[11px] text-gray-400 mt-0.5">
               {currentArtifact.era} · {currentArtifact.civilization}
               {currentArtifact.architectureStyle && ` · ${currentArtifact.architectureStyle}`}
             </p>
-            <p className="text-sm text-gray-200 mt-1.5">&ldquo;{currentArtifact.oneLiner}&rdquo;</p>
+            <p className="text-sm text-gray-200 mt-1.5 italic">{currentArtifact.oneLiner}</p>
 
             {/* Topic chips */}
-            <div className="flex gap-2 mt-2 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-1.5 mt-2.5 overflow-x-auto scrollbar-hide">
               {currentArtifact.topics.map((topic) => (
                 <TopicChip
                   key={topic.id}
@@ -233,15 +271,15 @@ export default function MainPage() {
 
         {/* Restoration result (복원 완료 시) */}
         {restorationState.status === 'ready' && !isCameraOpen && (
-          <div className="shrink-0 mx-4 mt-2 p-3 bg-gray-900/80 rounded-2xl border border-amber-500/20">
+          <div className="shrink-0 mx-4 mt-2 p-3 glass rounded-2xl border-timelens-gold/10">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-amber-400 font-medium">복원 이미지 생성 완료</span>
+              <span className="text-xs text-timelens-gold font-semibold tracking-wide uppercase">복원 완료</span>
               <button
                 onClick={handleDownloadRestoration}
-                className="flex items-center gap-1 px-3 py-1.5 bg-amber-500/20 rounded-full text-xs text-amber-300
-                           active:scale-95 transition-transform"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-timelens-gold/10 rounded-full text-xs text-timelens-gold
+                           active:scale-95 transition-transform border border-timelens-gold/20"
               >
-                <Download className="w-3.5 h-3.5" />
+                <Download className="w-3 h-3" />
                 저장
               </button>
             </div>
@@ -255,82 +293,116 @@ export default function MainPage() {
           </div>
         )}
 
-        {/* Chat transcript (스크롤 영역) */}
-        <div className="flex-1 overflow-y-auto px-4 py-3">
+        {/* Chat transcript */}
+        <div className="flex-1 overflow-hidden px-4 py-3">
           <TranscriptChat chunks={transcript} isStreaming={audioState === 'speaking'} />
         </div>
       </div>
 
-      {/* === Bottom: Input bar === */}
-      <div className="shrink-0 pb-safe-bottom bg-gray-950 border-t border-white/[0.06]">
+      {/* === Camera PIP (compact, above input bar) === */}
+      {isCameraOpen && (
+        <div className="shrink-0 mx-4 mb-2 relative rounded-2xl overflow-hidden" style={{ height: '28dvh' }}>
+          <CameraView
+            ref={cameraViewRef}
+            isScanning={false}
+            isRecognized={!!currentArtifact}
+            isBlurred={false}
+            onCapturePhoto={() => cameraViewRef.current?.capturePhoto() ?? ''}
+          />
+
+          <RestorationOverlay state={restorationState} beforeImage={beforeImage} />
+
+          {/* Capture button */}
+          <div className="absolute bottom-3 left-0 right-0 flex justify-center z-10">
+            <button
+              onClick={handleCapture}
+              className="px-5 py-2 bg-timelens-gold/90 text-black rounded-full font-semibold text-xs
+                         active:scale-95 transition-transform shadow-lg shadow-timelens-gold/30"
+            >
+              이거 봐봐
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* === Bottom: Glass Input Bar === */}
+      <div className="shrink-0 pb-safe-bottom glass-strong rounded-t-2xl">
         {/* Text input */}
-        <div className="flex items-center gap-2 px-4 py-3">
+        <div className="flex items-center gap-2 px-4 py-2.5">
           <input
             type="text"
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleTextSubmit()}
             placeholder="메시지를 입력하세요..."
-            className="flex-1 px-4 py-3 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm
-                       placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-timelens-gold/40
-                       border border-white/10"
+            className="flex-1 px-4 py-2.5 bg-white/[0.06] rounded-full text-white text-sm
+                       placeholder:text-gray-500 outline-none focus:ring-1 focus:ring-timelens-gold/30
+                       border border-white/[0.06]"
           />
           <button
             onClick={handleTextSubmit}
-            className="px-5 py-3 bg-timelens-gold text-black rounded-full font-medium text-sm
+            className="px-4 py-2.5 bg-timelens-gold text-black rounded-full font-semibold text-xs
                        active:scale-95 transition-transform"
           >
             전송
           </button>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center justify-around px-4 pb-3">
-          {/* Mic toggle */}
-          <button
-            onClick={handleMicToggle}
-            className={cn(
-              'w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200',
-              isMicOn
-                ? 'bg-white/15 text-white border border-white/20 hover:bg-white/25'
-                : 'bg-red-500/90 text-white shadow-lg shadow-red-500/30',
-            )}
-            aria-label={isMicOn ? '마이크 끄기' : '마이크 켜기'}
-          >
-            {isMicOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
-          </button>
-
-          {/* Camera toggle (온디맨드) */}
+        {/* Action buttons — mic center emphasis */}
+        <div className="flex items-center justify-center gap-6 px-4 pb-3">
+          {/* Camera toggle */}
           <button
             onClick={handleCameraToggle}
             className={cn(
-              'w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200',
+              'w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200',
               isCameraOpen
-                ? 'bg-timelens-gold/20 text-timelens-gold border-2 border-timelens-gold/60'
-                : 'bg-white/15 text-white border border-white/20 hover:bg-white/25',
+                ? 'bg-timelens-gold/15 text-timelens-gold border border-timelens-gold/30'
+                : 'bg-white/[0.06] text-gray-400 border border-white/[0.06] hover:bg-white/10',
             )}
             aria-label={isCameraOpen ? '카메라 닫기' : '카메라 열기'}
           >
-            {isCameraOpen ? <CameraOff className="w-6 h-6" /> : <Camera className="w-6 h-6" />}
+            {isCameraOpen ? <CameraOff className="w-4.5 h-4.5" /> : <Camera className="w-4.5 h-4.5" />}
           </button>
+
+          {/* Mic toggle — center, larger, with ripple */}
+          <div className="relative">
+            {isMicOn && audioState === 'listening' && (
+              <>
+                <span className="absolute inset-0 rounded-full border-2 border-timelens-gold/30 mic-ripple-ring" />
+                <span className="absolute inset-0 rounded-full border-2 border-timelens-gold/20 mic-ripple-ring [animation-delay:0.5s]" />
+              </>
+            )}
+            <button
+              onClick={handleMicToggle}
+              className={cn(
+                'relative w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200',
+                isMicOn
+                  ? 'bg-timelens-gold/20 text-timelens-gold border-2 border-timelens-gold/40 shadow-lg shadow-timelens-gold/10'
+                  : 'bg-red-500/90 text-white shadow-lg shadow-red-500/30',
+              )}
+              aria-label={isMicOn ? '마이크 끄기' : '마이크 켜기'}
+            >
+              {isMicOn ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
+            </button>
+          </div>
 
           {/* Diary */}
           <button
             onClick={() => sendTextMessage('다이어리 만들어줘')}
-            className="w-12 h-12 rounded-full bg-white/15 border border-white/20 flex items-center justify-center
-                       hover:bg-white/25 transition-colors"
+            className="w-11 h-11 rounded-full bg-white/[0.06] border border-white/[0.06] flex items-center justify-center
+                       hover:bg-white/10 transition-colors"
             aria-label="다이어리"
           >
-            <BookOpen className="w-5 h-5 text-white" />
+            <BookOpen className="w-4.5 h-4.5 text-gray-400" />
           </button>
         </div>
       </div>
 
-      {/* 저장 피드백 토스트 */}
+      {/* Toast */}
       {showSaved && (
-        <div className="absolute top-20 left-0 right-0 z-40 flex justify-center pointer-events-none">
-          <div className="bg-green-500/90 text-white text-sm font-medium px-4 py-2 rounded-full animate-fade-in">
-            {showSaved}
+        <div className="absolute top-20 left-0 right-0 z-50 flex justify-center pointer-events-none">
+          <div className="glass px-4 py-2 rounded-full animate-fade-in">
+            <span className="text-xs text-timelens-gold font-medium">{showSaved}</span>
           </div>
         </div>
       )}

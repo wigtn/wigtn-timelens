@@ -1,8 +1,7 @@
 // ============================================================
 // 파일: src/components/TranscriptChat.tsx
 // 담당: Part 2
-// 역할: 채팅형 트랜스크립트 표시 (자동 스크롤, 사용자/AI 구분)
-// 출처: part2-curator-ui.md §3.7
+// 역할: 채팅형 트랜스크립트 — 프리미엄 버블 + AI 아바타 + 타이핑 인디케이터
 // ============================================================
 
 'use client';
@@ -16,35 +15,66 @@ const ChatBubble = memo(function ChatBubble({ chunk }: { chunk: TranscriptChunk 
   const isUser = chunk.role === 'user';
 
   return (
-    <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
+    <div className={cn('flex gap-2 animate-msg-fade-in', isUser ? 'justify-end' : 'justify-start')}>
+      {/* AI avatar */}
+      {!isUser && (
+        <div className="shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-timelens-gold/30 to-timelens-bronze/20
+                        border border-timelens-gold/20 flex items-center justify-center mt-0.5">
+          <span className="text-xs">🏛</span>
+        </div>
+      )}
+
       <div
         className={cn(
-          'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
+          'max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
           isUser
-            ? 'bg-blue-500/20 text-blue-100 rounded-br-md'
-            : 'bg-gray-800/80 text-gray-100 rounded-bl-md',
+            ? 'bg-white/10 text-white rounded-br-md border border-white/[0.06]'
+            : 'bg-gradient-to-br from-white/[0.06] to-white/[0.02] text-gray-100 rounded-bl-md border border-white/[0.06]',
         )}
       >
-        <span
-          className={cn(
-            'text-xs font-medium block mb-1',
-            isUser ? 'text-blue-300' : 'text-purple-300',
-          )}
-        >
-          {isUser ? '나' : 'TimeLens'}
-        </span>
+        {!isUser && (
+          <span className="text-[10px] font-semibold text-timelens-gold/70 tracking-wide uppercase block mb-1">
+            TimeLens
+          </span>
+        )}
 
         <p className="whitespace-pre-wrap">{chunk.text}</p>
 
         {chunk.sources && chunk.sources.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-gray-700/30">
-            <span className="text-xs text-gray-500">출처: Google Search</span>
+          <div className="mt-2 pt-2 border-t border-white/[0.06]">
+            <span className="text-[10px] text-gray-500 italic">via Google Search</span>
           </div>
         )}
       </div>
     </div>
   );
 });
+
+function TypingIndicator() {
+  return (
+    <div className="flex gap-2 items-start">
+      <div className="shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-timelens-gold/30 to-timelens-bronze/20
+                      border border-timelens-gold/20 flex items-center justify-center">
+        <span className="text-xs">🏛</span>
+      </div>
+      <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-gradient-to-br from-white/[0.06] to-white/[0.02]
+                      border border-white/[0.06]">
+        <div className="flex items-center gap-1.5">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="w-1.5 h-1.5 rounded-full bg-timelens-gold/60"
+              style={{
+                animation: `typing-dot 1.2s ease-in-out infinite`,
+                animationDelay: `${i * 0.2}s`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function TranscriptChat({ chunks, isStreaming }: TranscriptProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -54,7 +84,7 @@ export default function TranscriptChat({ chunks, isStreaming }: TranscriptProps)
     if (isAutoScroll && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [chunks, isAutoScroll]);
+  }, [chunks, isAutoScroll, isStreaming]);
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
@@ -67,22 +97,20 @@ export default function TranscriptChat({ chunks, isStreaming }: TranscriptProps)
     <div
       ref={scrollRef}
       onScroll={handleScroll}
-      className="space-y-3 max-h-[40dvh] overflow-y-auto overscroll-contain
-                 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent"
+      className="space-y-3 h-full overflow-y-auto overscroll-contain scrollbar-hide"
     >
+      {chunks.length === 0 && !isStreaming && (
+        <div className="flex flex-col items-center justify-center h-full opacity-40">
+          <span className="text-2xl mb-2">🏛</span>
+          <span className="text-xs text-gray-500">대화가 곧 시작됩니다</span>
+        </div>
+      )}
+
       {chunks.map((chunk) => (
         <ChatBubble key={chunk.id} chunk={chunk} />
       ))}
 
-      {isStreaming && (
-        <div className="flex items-center gap-2 text-gray-400 text-sm">
-          <div className="flex gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" />
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:0.1s]" />
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:0.2s]" />
-          </div>
-        </div>
-      )}
+      {isStreaming && <TypingIndicator />}
     </div>
   );
 }

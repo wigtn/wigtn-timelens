@@ -20,6 +20,7 @@ export interface LiveSessionConfig {
   language: string;
   sessionId: string;
   resumeHandle?: string;
+  museum?: { name: string; address: string };
 }
 
 const MODEL_ID = 'gemini-2.5-flash-native-audio-preview-12-2025';
@@ -58,7 +59,7 @@ export class LiveSession {
 
     this.ai = new GoogleGenAI({ apiKey: config.token, httpOptions: { apiVersion: 'v1alpha' } });
 
-    const systemInstruction = getSystemInstruction(config.language);
+    const systemInstruction = getSystemInstruction(config.language, config.museum);
 
     const sessionConfig = {
       model: MODEL_ID,

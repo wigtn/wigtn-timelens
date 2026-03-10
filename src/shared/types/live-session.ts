@@ -90,9 +90,22 @@ export interface LiveSessionControls {
   getSessionState: () => SessionState;
 }
 
+/** 박물관 선택 정보 (온보딩에서 수집) */
+export interface MuseumContext {
+  name: string;
+  placeId: string;
+  address: string;
+  location: { lat: number; lng: number };
+  photoUrl?: string;
+  rating?: number;
+  openNow?: boolean;
+}
+
 export interface SessionConfig {
   language: string;
   sessionId?: string;
+  museum?: MuseumContext;
+  userLocation?: { lat: number; lng: number };
 }
 
 export interface SessionState {

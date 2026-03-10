@@ -1,8 +1,7 @@
 // ============================================================
 // 파일: src/components/AudioVisualizer.tsx
 // 담당: Part 2
-// 역할: 오디오 상태별 파형 시각화 (idle/listening/speaking/generating)
-// 출처: part2-curator-ui.md §3.8
+// 역할: 오디오 상태별 파형 시각화 — 골드 그라데이션 바
 // ============================================================
 
 'use client';
@@ -11,7 +10,7 @@ import { useRef, useEffect } from 'react';
 import type { AudioVisualizerProps } from '@shared/types/components';
 import type { AudioState } from '@shared/types/common';
 
-const BAR_COUNT = 20;
+const BAR_COUNT = 24;
 
 function getBarHeight(state: AudioState, audioLevel: number, index: number): number {
   switch (state) {
@@ -19,14 +18,25 @@ function getBarHeight(state: AudioState, audioLevel: number, index: number): num
       return 2;
     case 'listening': {
       const wave = Math.sin((index / BAR_COUNT) * Math.PI * 2 + Date.now() / 200);
-      return 2 + audioLevel * 20 * (0.5 + 0.5 * Math.abs(wave));
+      return 2 + audioLevel * 24 * (0.5 + 0.5 * Math.abs(wave));
     }
     case 'speaking': {
       const aiWave = Math.sin((index / BAR_COUNT) * Math.PI * 3 + Date.now() / 150);
-      return 4 + 16 * (0.5 + 0.5 * Math.abs(aiWave));
+      return 4 + 20 * (0.5 + 0.5 * Math.abs(aiWave));
     }
     case 'generating':
       return 2;
+  }
+}
+
+function getBarColor(state: AudioState): string {
+  switch (state) {
+    case 'listening':
+      return 'bg-timelens-gold/80';
+    case 'speaking':
+      return 'bg-gradient-to-t from-timelens-gold to-amber-300';
+    default:
+      return 'bg-white/20';
   }
 }
 
@@ -62,26 +72,21 @@ export default function AudioVisualizer({ state, audioLevel = 0 }: AudioVisualiz
 
   if (state === 'generating') {
     return (
-      <div className="flex items-center justify-center h-8 gap-2">
-        <div className="w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs text-gray-400">생성 중...</span>
+      <div className="flex items-center justify-center h-6 gap-2">
+        <div className="w-4 h-4 border-2 border-timelens-gold/40 border-t-timelens-gold rounded-full animate-spin" />
+        <span className="text-[10px] text-gray-500 tracking-wide">생성 중</span>
       </div>
     );
   }
 
-  const barColorClass =
-    state === 'listening'
-      ? 'bg-blue-400'
-      : state === 'speaking'
-        ? 'bg-purple-400'
-        : 'bg-gray-600';
+  const barClass = getBarColor(state);
 
   return (
-    <div ref={containerRef} className="flex items-center justify-center h-8 gap-[2px] px-6">
+    <div ref={containerRef} className="flex items-center justify-center h-6 gap-[2px]">
       {Array.from({ length: BAR_COUNT }, (_, i) => (
         <div
           key={i}
-          className={`w-1 rounded-full transition-colors duration-75 ${barColorClass}`}
+          className={`w-[3px] rounded-full transition-colors duration-100 ${barClass}`}
           style={{ height: '2px' }}
         />
       ))}

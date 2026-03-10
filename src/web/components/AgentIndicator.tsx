@@ -1,20 +1,20 @@
 // ============================================================
 // 파일: src/components/AgentIndicator.tsx
 // 담당: Part 2
-// 역할: 현재 활성 에이전트 표시 + 전환 애니메이션
-// 출처: part2-curator-ui.md §3.9
+// 역할: 글래스 헤더 — 박물관 이름 + LIVE 배지 + 에이전트 전환
 // ============================================================
 
 'use client';
 
 import type { AgentIndicatorProps } from '@shared/types/components';
 import type { AgentType } from '@shared/types/common';
+import { cn } from '@web/lib/utils';
 
-const AGENT_META: Record<AgentType, { icon: string; label: string; color: string }> = {
-  curator:     { icon: '🤖', label: 'Curator Agent',     color: 'text-green-400' },
-  restoration: { icon: '🎨', label: 'Restoration Agent', color: 'text-orange-400' },
-  discovery:   { icon: '🧭', label: 'Discovery Agent',   color: 'text-blue-400' },
-  diary:       { icon: '📖', label: 'Diary Agent',       color: 'text-yellow-400' },
+const AGENT_META: Record<AgentType, { icon: string; label: string; accent: string }> = {
+  curator:     { icon: '🏛', label: 'Curator',     accent: 'text-timelens-gold' },
+  restoration: { icon: '🎨', label: 'Restoration', accent: 'text-amber-400' },
+  discovery:   { icon: '🧭', label: 'Discovery',   accent: 'text-blue-400' },
+  diary:       { icon: '📖', label: 'Diary',       accent: 'text-yellow-400' },
 };
 
 export default function AgentIndicator({
@@ -25,25 +25,39 @@ export default function AgentIndicator({
   const meta = AGENT_META[activeAgent];
 
   return (
-    <div className="px-4 py-2">
+    <div className="flex items-center justify-between">
+      {/* Agent label */}
       <div
-        className={`flex items-center gap-2 transition-all duration-500 ease-in-out
-          ${isTransitioning ? 'opacity-0 translate-x-2' : 'opacity-100 translate-x-0'}`}
+        className={cn(
+          'flex items-center gap-2 transition-all duration-500 ease-out',
+          isTransitioning ? 'opacity-0 -translate-x-2' : 'opacity-100 translate-x-0 animate-agent-morph',
+        )}
       >
-        <span className="text-lg" role="img" aria-label={meta.label}>
+        <span className="text-base" role="img" aria-label={meta.label}>
           {meta.icon}
         </span>
-        <span className={`text-sm font-medium ${meta.color}`}>
+        <span className={cn('text-xs font-semibold tracking-wide uppercase', meta.accent)}>
           {meta.label}
         </span>
       </div>
 
+      {/* LIVE badge */}
+      <div className="flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-live-pulse" />
+        <span className="text-[10px] font-bold tracking-wider text-red-400 uppercase">
+          LIVE
+        </span>
+      </div>
+
+      {/* Transition overlay */}
       {isTransitioning && switchData && (
-        <div className="flex items-center gap-2 mt-1 animate-fade-in">
-          <span className="text-lg">{AGENT_META[switchData.from].icon}</span>
-          <span className="text-gray-500">→</span>
-          <span className="text-lg">{AGENT_META[switchData.to].icon}</span>
-          <span className="text-xs text-gray-400 ml-1">{switchData.reason}</span>
+        <div className="absolute inset-0 flex items-center justify-center z-10 animate-fade-in">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass">
+            <span className="text-sm">{AGENT_META[switchData.from].icon}</span>
+            <span className="text-gray-500 text-xs">→</span>
+            <span className="text-sm">{AGENT_META[switchData.to].icon}</span>
+            <span className="text-[10px] text-gray-400">{switchData.reason}</span>
+          </div>
         </div>
       )}
     </div>

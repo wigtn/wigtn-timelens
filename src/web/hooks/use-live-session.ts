@@ -370,7 +370,10 @@ export function useLiveSession(): UseLiveSessionReturn {
       });
 
       // 7. LiveSession 연결
-      const liveConfig: LiveSessionConfig = { token, language, sessionId };
+      const liveConfig: LiveSessionConfig = {
+        token, language, sessionId,
+        museum: config.museum ? { name: config.museum.name, address: config.museum.address } : undefined,
+      };
       await liveSession.connect(liveConfig);
 
       // 8. AudioCapture
