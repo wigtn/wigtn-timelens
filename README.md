@@ -6,6 +6,16 @@
 
 <p align="center">AI-powered cultural heritage companion that brings museum artifacts to life through real-time conversation, image restoration, and interactive discovery.</p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-15-black?logo=next.js" alt="Next.js 15" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" alt="TypeScript 5" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS 4" />
+  <img src="https://img.shields.io/badge/Gemini-Live_API-4285F4?logo=google&logoColor=white" alt="Gemini Live API" />
+  <img src="https://img.shields.io/badge/Firebase-Firestore-FFCA28?logo=firebase&logoColor=black" alt="Firebase" />
+  <img src="https://img.shields.io/badge/Cloud_Run-Seoul-4285F4?logo=googlecloud&logoColor=white" alt="Cloud Run" />
+</p>
+
 Built for the **Gemini Live Agent Challenge**.
 
 ## Features
@@ -145,7 +155,10 @@ src/
   web/            # Client components & hooks
   back/           # Server-side logic (agents, geo, Firebase)
 mobile/           # React Native + Expo app
-docs/             # PRDs, design docs, contracts
+firebase/         # Firestore & Storage security rules
+docs/             # PRDs, design docs
+assets/           # Logo, reference images
+.github/          # GitHub Actions CI/CD
 ```
 
 ## Deployment

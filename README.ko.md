@@ -6,6 +6,16 @@
 
 <p align="center">박물관 유물에 생명을 불어넣는 AI 문화유산 컴패니언. 실시간 대화, 이미지 복원, 인터랙티브 탐험을 제공합니다.</p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-15-black?logo=next.js" alt="Next.js 15" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" alt="TypeScript 5" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS 4" />
+  <img src="https://img.shields.io/badge/Gemini-Live_API-4285F4?logo=google&logoColor=white" alt="Gemini Live API" />
+  <img src="https://img.shields.io/badge/Firebase-Firestore-FFCA28?logo=firebase&logoColor=black" alt="Firebase" />
+  <img src="https://img.shields.io/badge/Cloud_Run-Seoul-4285F4?logo=googlecloud&logoColor=white" alt="Cloud Run" />
+</p>
+
 **Gemini Live Agent Challenge** 출품작.
 
 ## 주요 기능
@@ -145,7 +155,10 @@ src/
   web/            # 클라이언트 컴포넌트 & 훅
   back/           # 서버 로직 (에이전트, 지도, Firebase)
 mobile/           # React Native + Expo 앱
-docs/             # PRD, 설계 문서, 계약서
+firebase/         # Firestore & Storage 보안 규칙
+docs/             # PRD, 설계 문서
+assets/           # 로고, 레퍼런스 이미지
+.github/          # GitHub Actions CI/CD
 ```
 
 ## 배포

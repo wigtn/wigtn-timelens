@@ -84,11 +84,12 @@ src/
     agents/               # ADK agents (curator, restoration, discovery, diary)
     lib/                  # Server utilities (firebase, geo/places)
 mobile/                   # React Native + Expo app
+firebase/                 # Firestore & Storage security rules
 assets/                   # Logo, reference images
 docs/                     # Documentation
-  contracts/              # Type contracts, SDK reference
   design/                 # Architecture docs (this file)
   prd/                    # Product requirements
+.github/                  # GitHub Actions CI/CD
 ```
 
 ## Pipeline 1: Live Streaming

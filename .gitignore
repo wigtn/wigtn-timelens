@@ -17,6 +17,10 @@ out/
 dist/
 build/
 *.tsbuildinfo
+next-env.d.ts
+
+# Dev tracking
+PROGRESS.md
 
 # OS
 .DS_Store
