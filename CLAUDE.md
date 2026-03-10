@@ -6,9 +6,9 @@ Deadline: 2026-03-16 17:00 PT = 2026-03-17 09:00 KST
 Stack: Next.js 15, React 19, TypeScript 5, Tailwind 4, shadcn/ui, @google/genai, Firebase, Cloud Run
 
 ## Source of Truth (충돌 시 우선순위)
-1. env var / model ID → `docs/contracts/gemini-sdk-reference.md`
-2. 타입 / 파일 소유권 → `docs/contracts/shared-contract.md`
-3. 파트별 설계 → `docs/design/part{1-5}-*.md`
+1. env var / model ID → `docs/contracts/gemini-sdk-reference.md` (gitignored, local only)
+2. 타입 / 파일 소유권 → `docs/contracts/shared-contract.md` (gitignored, local only)
+3. 아키텍처 설계 → `docs/design/architecture.md`
 4. UI 플로우 → `docs/prd/timelens-ui-flow.md`
 
 ## 아키텍처 결정 (확정)

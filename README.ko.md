@@ -1,6 +1,10 @@
-# TimeLens
+<p align="center">
+  <img src="assets/logo.png" alt="TimeLens Logo" width="200" />
+</p>
 
-박물관 유물에 생명을 불어넣는 AI 문화유산 컴패니언. 실시간 대화, 이미지 복원, 인터랙티브 탐험을 제공합니다.
+<h1 align="center">TimeLens</h1>
+
+<p align="center">박물관 유물에 생명을 불어넣는 AI 문화유산 컴패니언. 실시간 대화, 이미지 복원, 인터랙티브 탐험을 제공합니다.</p>
 
 **Gemini Live Agent Challenge** 출품작.
 
@@ -73,36 +77,64 @@ npm run type-check   # TypeScript 검증
 ## 아키텍처
 
 ```
-사용자 디바이스 (카메라 + 마이크)
-    │
-    ▼
-┌─────────────────────────────┐
-│  Next.js 프론트엔드 (React) │
-│  - 박물관 선택 (온보딩)     │
-│  - 라이브 세션 UI           │
-│  - 복원 결과 뷰어           │
-└──────────┬──────────────────┘
-           │
-    ┌──────┴──────┐
-    ▼             ▼
-┌────────┐  ┌──────────┐
-│ Live   │  │ REST API │
-│ API    │  │ Routes   │
-│(스트림)│  │(온디맨드)│
-└───┬────┘  └────┬─────┘
-    │            │
-    ▼            ▼
-┌─────────────────────────────┐
-│  Gemini (Live + Flash)      │
-│  + Google Search Grounding  │
-│  + Places API               │
-│  + Firebase                 │
-└─────────────────────────────┘
+                    ┌──────────────────────┐
+                    │   사용자 디바이스     │
+                    │   (카메라 + 마이크)   │
+                    └──────────┬───────────┘
+                               │
+                    ┌──────────▼───────────┐
+                    │   Next.js 프론트엔드  │
+                    │   (React 19 + TS 5)  │
+                    ├──────────────────────┤
+                    │  MuseumSelector      │
+                    │  OnboardingSplash    │
+                    │  Session Page        │
+                    │  TranscriptChat      │
+                    │  CameraView (PIP)    │
+                    │  RestorationOverlay  │
+                    └───────┬──────┬───────┘
+                            │      │
+              ┌─────────────┘      └─────────────┐
+              ▼                                   ▼
+    ┌──────────────────┐              ┌──────────────────┐
+    │  파이프라인 1     │              │  파이프라인 2     │
+    │  LIVE (스트림)    │              │  REST (온디맨드)  │
+    │                  │              │                   │
+    │  Gemini Live API │              │  /api/restore     │
+    │  + Audio I/O     │              │  /api/discover    │
+    │  + Video frames  │              │  /api/diary/*     │
+    │  + Function Call │              │  /api/museums/*   │
+    │  + Search Ground │              │  /api/session     │
+    └────────┬─────────┘              └────────┬──────────┘
+             │                                 │
+             └──────────┬──────────────────────┘
+                        ▼
+              ┌──────────────────┐
+              │  외부 API        │
+              ├──────────────────┤
+              │  Gemini Live API │
+              │  Gemini Flash    │
+              │  Google Search   │
+              │  Places API      │
+              │  Firebase        │
+              └──────────────────┘
 ```
 
 **듀얼 파이프라인:**
 - **파이프라인 1 (Live):** Gemini Live API를 통한 스트리밍 오디오/비디오 + Function Calling
 - **파이프라인 2 (REST):** 이미지 복원, 주변 탐험, 다이어리 생성 등 서버 API 라우트
+
+### REST API 라우트
+
+| 라우트 | 역할 | 백엔드 |
+|--------|------|--------|
+| `POST /api/session` | 세션 생성 + Ephemeral Token | Gemini API |
+| `GET /api/museums/nearby` | GPS 기반 박물관 검색 | Places API |
+| `GET /api/museums/search` | 텍스트 검색 박물관 | Places API |
+| `POST /api/restore` | 유물 복원 이미지 생성 | Gemini Flash |
+| `GET /api/discover` | 주변 문화유산 검색 | Places API |
+| `POST /api/diary/generate` | 방문 다이어리 생성 | Gemini + Firestore |
+| `GET /api/diary/[id]` | 다이어리 조회 | Firestore |
 
 ## 프로젝트 구조
 

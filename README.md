@@ -1,6 +1,10 @@
-# TimeLens
+<p align="center">
+  <img src="assets/logo.png" alt="TimeLens Logo" width="200" />
+</p>
 
-AI-powered cultural heritage companion that brings museum artifacts to life through real-time conversation, image restoration, and interactive discovery.
+<h1 align="center">TimeLens</h1>
+
+<p align="center">AI-powered cultural heritage companion that brings museum artifacts to life through real-time conversation, image restoration, and interactive discovery.</p>
 
 Built for the **Gemini Live Agent Challenge**.
 
@@ -73,36 +77,64 @@ npm run type-check   # TypeScript validation
 ## Architecture
 
 ```
-User Device (Camera + Mic)
-    │
-    ▼
-┌─────────────────────────────┐
-│  Next.js Frontend (React)   │
-│  - MuseumSelector           │
-│  - Live Session UI          │
-│  - Restoration Viewer       │
-└──────────┬──────────────────┘
-           │
-    ┌──────┴──────┐
-    ▼             ▼
-┌────────┐  ┌──────────┐
-│ Live   │  │ REST API │
-│ API    │  │ Routes   │
-│(stream)│  │(on-demand│
-└───┬────┘  └────┬─────┘
-    │            │
-    ▼            ▼
-┌─────────────────────────────┐
-│  Gemini (Live + Flash)      │
-│  + Google Search Grounding  │
-│  + Places API               │
-│  + Firebase                 │
-└─────────────────────────────┘
+                    ┌──────────────────────┐
+                    │   User Device        │
+                    │   (Camera + Mic)     │
+                    └──────────┬───────────┘
+                               │
+                    ┌──────────▼───────────┐
+                    │   Next.js Frontend   │
+                    │   (React 19 + TS 5)  │
+                    ├──────────────────────┤
+                    │  MuseumSelector      │
+                    │  OnboardingSplash    │
+                    │  Session Page        │
+                    │  TranscriptChat      │
+                    │  CameraView (PIP)    │
+                    │  RestorationOverlay  │
+                    └───────┬──────┬───────┘
+                            │      │
+              ┌─────────────┘      └─────────────┐
+              ▼                                   ▼
+    ┌──────────────────┐              ┌──────────────────┐
+    │  Pipeline 1      │              │  Pipeline 2      │
+    │  LIVE (Stream)   │              │  REST (On-demand) │
+    │                  │              │                   │
+    │  Gemini Live API │              │  /api/restore     │
+    │  + Audio I/O     │              │  /api/discover    │
+    │  + Video frames  │              │  /api/diary/*     │
+    │  + Function Call │              │  /api/museums/*   │
+    │  + Search Ground │              │  /api/session     │
+    └────────┬─────────┘              └────────┬──────────┘
+             │                                 │
+             └──────────┬──────────────────────┘
+                        ▼
+              ┌──────────────────┐
+              │  External APIs   │
+              ├──────────────────┤
+              │  Gemini Live API │
+              │  Gemini Flash    │
+              │  Google Search   │
+              │  Places API      │
+              │  Firebase        │
+              └──────────────────┘
 ```
 
 **Dual Pipeline:**
 - **Pipeline 1 (Live):** Streaming audio/video via Gemini Live API with function calling
 - **Pipeline 2 (REST):** Image restoration, discovery, diary generation via server API routes
+
+### REST API Routes
+
+| Route | Purpose | Backend |
+|-------|---------|---------|
+| `POST /api/session` | Create session + ephemeral token | Gemini API |
+| `GET /api/museums/nearby` | GPS-based museum search | Places API |
+| `GET /api/museums/search` | Text search for museums | Places API |
+| `POST /api/restore` | Generate artifact restoration | Gemini Flash |
+| `GET /api/discover` | Find nearby heritage sites | Places API |
+| `POST /api/diary/generate` | Generate visit diary | Gemini + Firestore |
+| `GET /api/diary/[id]` | Retrieve diary | Firestore |
 
 ## Project Structure
 
