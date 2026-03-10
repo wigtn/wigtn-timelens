@@ -156,6 +156,15 @@
   66% { transform: translate(-20px, 15px) scale(0.95); }
 }
 
+/* RestorationOverlay 스캔라인 애니메이션 */
+@keyframes scanline {
+  0% { top: -2px; }
+  100% { top: 100%; }
+}
+.animate-scanline {
+  animation: scanline 1.5s ease-in-out infinite;
+}
+
 /* Discovery 카드 stagger 애니메이션 */
 @keyframes fadeInUp {
   from {

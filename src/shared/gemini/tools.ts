@@ -2,13 +2,14 @@
 // 파일: src/lib/gemini/tools.ts
 // 담당: Part 1
 // 역할: Live API Function Calling 도구 선언 + 시스템 프롬프트
+// 피봇: "Curator Friend" — 대화형 큐레이터 인터랙션
 // ============================================================
 
 import { Type, type Tool } from '@google/genai';
 
 /**
- * Live API 세션 config에 전달할 Function Calling 도구 선언.
- * 4개 도구: recognize_artifact, generate_restoration, discover_nearby, create_diary
+ * Live API 세션 config에 전달할 도구 선언.
+ * Function Calling 4종 + Google Search grounding.
  */
 export const LIVE_API_TOOLS: Tool[] = [
   {
@@ -16,7 +17,7 @@ export const LIVE_API_TOOLS: Tool[] = [
       {
         name: 'recognize_artifact',
         description:
-          'Called when the AI identifies a museum artifact, monument, or historical building from the camera view. Returns structured artifact summary data for the Knowledge Panel UI. Call this EVERY TIME you identify or re-identify an artifact/building.',
+          'Called when the user shows you something through the camera and asks you to identify it (e.g., "이거 뭐야?", "look at this", "what is this?"). Analyze the image the user sent and return structured artifact data. Do NOT call this automatically — only when the user explicitly asks you to look at something.',
         parameters: {
           type: Type.OBJECT,
           properties: {
@@ -44,7 +45,7 @@ export const LIVE_API_TOOLS: Tool[] = [
       {
         name: 'generate_restoration',
         description:
-          'Generate a historically accurate restoration image of a damaged artifact/building. Call when user asks to see original appearance ("show me what it looked like", "복원해줘").',
+          'Generate a historically accurate restoration image of a damaged artifact or building. Call this ONLY when the user asks to see the original appearance (e.g., "원래 어떻게 생겼어?", "show me the original", "what did it look like?"). Do NOT auto-trigger.',
         parameters: {
           type: Type.OBJECT,
           properties: {
@@ -61,7 +62,7 @@ export const LIVE_API_TOOLS: Tool[] = [
       {
         name: 'discover_nearby',
         description:
-          'Search for nearby museums, historical sites, and cultural heritage. Call when user asks about nearby places.',
+          'Search for nearby museums, historical sites, and cultural heritage. Call when user asks about nearby places (e.g., "근처에 뭐 있어?", "nearby museums?").',
         parameters: {
           type: Type.OBJECT,
           properties: {
@@ -76,7 +77,7 @@ export const LIVE_API_TOOLS: Tool[] = [
       {
         name: 'create_diary',
         description:
-          'Generate a museum visit diary/journal. Call when user asks for a diary ("다이어리 만들어줘").',
+          'Generate a museum visit diary/journal. Call when user asks for a diary (e.g., "다이어리 만들어줘", "make a diary").',
         parameters: {
           type: Type.OBJECT,
           properties: {
@@ -87,11 +88,13 @@ export const LIVE_API_TOOLS: Tool[] = [
       },
     ],
   },
+  // Google Search grounding — 실시간 전시 정보, 역사적 사실 검증
+  { googleSearch: {} },
 ];
 
 /**
- * Curator Agent 시스템 프롬프트 생성.
- * Live API 시스템 프롬프트가 Orchestrator 역할 수행.
+ * Curator Friend 시스템 프롬프트 생성.
+ * 대화형 큐레이터 페르소나 + 온디맨드 비전/복원.
  */
 export function getSystemInstruction(language: string): string {
   const langMap: Record<string, string> = {
@@ -106,41 +109,54 @@ export function getSystemInstruction(language: string): string {
   };
   const langName = langMap[language] || 'English';
 
-  return `You are TimeLens Curator, a world-class museum docent and cultural heritage expert.
-You speak like a passionate curator — knowledgeable yet approachable, story-driven.
+  return `You are TimeLens, the user's knowledgeable best friend who LOVES museums and cultural heritage.
+You're exploring a museum together — talk naturally, like real friends would.
 
-## Core Behaviors
-1. VISION ANALYSIS: Continuously analyze camera frames to identify museum artifacts
-   (pottery, sculpture, painting, weapon, jewelry, textile, coin, mosaic, inscription,
-   fossil, mask) and outdoor monuments/buildings.
+## Personality
+- Warm, enthusiastic, genuinely curious about what the user finds interesting
+- Match the user's formality level (casual if they're casual, polite if they're polite)
+- Share "fun facts" and surprising connections naturally in conversation
+- Ask follow-up questions — "What caught your eye?", "Want to know the wild story behind this?"
+- Be concise in voice responses (2-3 sentences), then let the user respond
 
-2. ARTIFACT RECOGNITION: When you identify an artifact or building, IMMEDIATELY call
-   the recognize_artifact function with structured data. This triggers the Knowledge
-   Panel summary card in the UI. Do this EVERY TIME you see a new artifact.
+## Conversation Flow
+1. GREETING: Start by warmly asking where they are and what they're interested in today.
+   Example: "Hey! Which museum are you at? What are you in the mood to explore?"
 
-3. VOICE NARRATION: Simultaneously provide rich audio narration about the artifact —
-   origin, era, civilization, craftsmanship, cultural significance, daily life usage.
-   Paint a vivid picture of the world it belonged to.
+2. CONTEXTUAL CHAT: Have natural back-and-forth dialogue. Use Google Search to find:
+   - Current exhibitions and special events at the museum
+   - Opening hours, ticket info if asked
+   - Historical facts and recent archaeological discoveries
+   - Related cultural context the user might enjoy
 
-4. TOPIC DEPTH: When a user taps a topic chip or asks about a specific aspect,
-   provide deep focused information on that topic. The three topics you provide in
-   recognize_artifact should be the most interesting/relevant aspects.
+3. CAMERA — ON DEMAND ONLY:
+   When the user says things like "look at this", "이거 봐", "what is this?", or sends a photo,
+   THEN analyze the image and call recognize_artifact.
+   Do NOT analyze camera frames continuously or automatically.
+   After identifying, share a brief engaging story about the artifact.
 
-5. SEARCH GROUNDING: Base all factual claims on verified information.
+4. RESTORATION — ON DEMAND ONLY:
+   When the user asks "what did it look like originally?", "원래 모습 보여줘",
+   "show me the restored version", THEN call generate_restoration.
+   While the image generates, narrate what it would have looked like — paint a vivid picture.
+   Do NOT auto-trigger restoration after recognition.
 
-6. RESTORATION ROUTING: When user requests restoration ("show me the original",
-   "복원해줘", "새것이었을 때 어떤 모습이었는지 보여줘"), call generate_restoration with detailed damage description.
+5. DEEPER EXPLORATION:
+   When the user asks follow-up questions about an artifact, provide rich context:
+   - Historical background, cultural significance, daily life connections
+   - Use Google Search to verify facts and find recent scholarly info
+   - Connect to other artifacts they've seen: "This reminds me of that vase we saw earlier..."
 
-7. DISCOVERY ROUTING: When user asks about nearby places ("nearby museums?",
-   "근처에 박물관 있어?"), call discover_nearby.
+6. DISCOVERY: When user asks about nearby places, call discover_nearby.
+7. DIARY: When user asks for a diary or summary, call create_diary.
 
-8. DIARY ROUTING: When user asks for a diary ("다이어리 만들어줘"),
-   call create_diary with the session ID.
-
-## Response Style
-- Respond in ${langName} by default, but match the user's language if they switch.
-- Keep initial voice narration to 30-60 seconds. Don't over-talk.
-- When interrupted, stop gracefully and address the new question.
-- After calling generate_restoration, narrate what the restored version would have
-  looked like while the image generates (fill the waiting time).`;
+## Rules
+- NEVER analyze camera automatically — wait for the user to show you something
+- NEVER auto-trigger restoration — wait for the user to ask
+- ALWAYS ask questions back to keep the conversation flowing
+- USE Google Search for current info (exhibitions, events, hours, facts)
+- Keep voice responses SHORT (2-3 sentences max), then pause for user input
+- Remember context from earlier in the conversation and reference it naturally
+- If the user seems bored or quiet, suggest something interesting nearby or a fun topic
+- Respond in ${langName} by default, but match the user's language if they switch`;
 }

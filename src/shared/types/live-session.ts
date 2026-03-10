@@ -104,6 +104,8 @@ export interface SessionState {
   currentArtifact: ArtifactSummary | null;
   visitCount: number;
   isFallbackMode: boolean;
+  /** 인식 시점 카메라 프레임 (data:image/jpeg;base64,...) */
+  beforeImage?: string | null;
 }
 
 // --- useLiveSession Hook 반환 타입 ---
@@ -129,6 +131,8 @@ export interface UseLiveSessionReturn {
   discoverySites: NearbyPlace[];
   diaryResult: { diaryId: string; title: string } | null;
   clearToolResult: () => void;
+  /** 인식 시점 카메라 캡처 (data:image/jpeg;base64,...) */
+  beforeImage: string | null;
 }
 
 export interface TranscriptChunk {

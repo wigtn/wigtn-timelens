@@ -119,7 +119,10 @@ export default function KnowledgePanel({
   return (
     <div
       className="absolute left-0 right-0 bottom-0 z-20"
-      style={{ paddingBottom: '80px' }}
+      style={{
+        paddingBottom: '80px',
+        pointerEvents: state === 'closed' ? 'none' : 'auto',
+      }}
     >
       <div
         className={`bg-gray-900/95 backdrop-blur-xl rounded-t-3xl overflow-hidden border-t border-white/[0.08]

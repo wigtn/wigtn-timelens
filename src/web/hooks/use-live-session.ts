@@ -60,6 +60,7 @@ interface SessionSetters {
   setRestorationState: React.Dispatch<React.SetStateAction<RestorationUIState>>;
   setDiscoverySites: React.Dispatch<React.SetStateAction<NearbyPlace[]>>;
   setDiaryResult: React.Dispatch<React.SetStateAction<{ diaryId: string; title: string } | null>>;
+  setBeforeImage: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSessionEvents {
@@ -183,6 +184,7 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
         case 'generate_restoration':
           if (data.result.type === 'restoration') {
             setters.setRestorationState({ status: 'ready', data: data.result });
+            setters.setBeforeImage(data.result.referenceImageUrl ?? null);
           }
           break;
         case 'discover_nearby':
@@ -253,6 +255,7 @@ export function useLiveSession(): UseLiveSessionReturn {
   const [restorationState, setRestorationState] = useState<RestorationUIState>({ status: 'idle' });
   const [discoverySites, setDiscoverySites] = useState<NearbyPlace[]>([]);
   const [diaryResult, setDiaryResult] = useState<{ diaryId: string; title: string } | null>(null);
+  const [beforeImage, setBeforeImage] = useState<string | null>(null);
 
   // Refs
   const liveSessionRef = useRef<LiveSession | null>(null);
@@ -328,7 +331,7 @@ export function useLiveSession(): UseLiveSessionReturn {
       const setters: SessionSetters = {
         setSessionState, setTranscript, setCurrentArtifact,
         setAudioState, setActiveAgent, setToolResult,
-        setRestorationState, setDiscoverySites, setDiaryResult,
+        setRestorationState, setDiscoverySites, setDiaryResult, setBeforeImage,
       };
       const events = createSessionEvents(refs, setters);
 
@@ -369,13 +372,10 @@ export function useLiveSession(): UseLiveSessionReturn {
       audioCaptureRef.current = audioCapture;
       await audioCapture.start();
 
-      // 9. CameraCapture
+      // 9. CameraCapture (프리뷰만 — 프레임 상시 전송 안 함, 온디맨드)
       const cameraCapture = createCameraCapture();
       cameraCaptureRef.current = cameraCapture;
       await cameraCapture.start();
-      cameraCapture.startFrameLoop((base64Jpeg) => {
-        liveSessionRef.current?.sendVideoFrame(base64Jpeg);
-      });
 
       // 9b. Frame capture handler for restoration before-image
       liveSession.setFrameCaptureHandler(() => cameraCapture.captureFrame());
@@ -474,5 +474,6 @@ export function useLiveSession(): UseLiveSessionReturn {
     requestTopicDetail, sendTextMessage, sendPhoto,
     currentArtifact, transcript, audioState, activeAgent,
     toolResult, restorationState, discoverySites, diaryResult, clearToolResult,
+    beforeImage,
   };
 }

@@ -36,6 +36,7 @@ export class LiveSession {
   private agentReturnTimer: ReturnType<typeof setTimeout> | null = null;
   private userId = '';
   private visits: DiaryVisitInput[] = [];
+  private lastCameraFrame: string | null = null;
 
   constructor(events: LiveSessionEvents) {
     this.events = events;
@@ -47,6 +48,7 @@ export class LiveSession {
       currentArtifact: null,
       visitCount: 0,
       isFallbackMode: false,
+      beforeImage: null,
     };
   }
 
@@ -97,6 +99,7 @@ export class LiveSession {
     }
     this.ai = null;
     this.visits = [];
+    this.lastCameraFrame = null;
     this.updateStatus('disconnected');
   }
 
@@ -109,6 +112,7 @@ export class LiveSession {
 
   sendVideoFrame(base64Jpeg: string): void {
     if (!this.session || this.state.status !== 'connected') return;
+    this.lastCameraFrame = base64Jpeg;
     this.session.sendRealtimeInput({
       media: { data: base64Jpeg, mimeType: 'image/jpeg' },
     });
@@ -128,7 +132,7 @@ export class LiveSession {
       turns: [{
         role: 'user',
         parts: [
-          { text: prompt || 'What is this artifact? Please identify it.' },
+          { text: prompt || 'I want to show you this — take a look and tell me about it!' },
           { inlineData: { mimeType: 'image/jpeg', data: base64Jpeg } },
         ],
       }],
@@ -256,6 +260,25 @@ export class LiveSession {
       });
     }
 
+    // 8b. 검색 그라운딩 소스 — 마지막 트랜스크립트에 소스 첨부
+    const groundingMeta =
+      message?.serverContent?.groundingMetadata ?? message?.groundingMetadata;
+    if (groundingMeta?.groundingChunks) {
+      const sources: string[] = [];
+      for (const chunk of groundingMeta.groundingChunks) {
+        if (chunk?.web?.uri) sources.push(chunk.web.uri);
+      }
+      if (sources.length > 0) {
+        // isFinal=true로 현재 트랜스크립트 종료 + 소스 첨부
+        this.events.onTranscript({
+          text: '',
+          delta: '',
+          isFinal: true,
+          sources,
+        });
+      }
+    }
+
     // 9. 세션 재접속 핸들 갱신
     if (message.sessionResumptionUpdate?.newHandle) {
       this.resumeHandle = message.sessionResumptionUpdate.newHandle;
@@ -313,6 +336,10 @@ export class LiveSession {
 
     this.state.currentArtifact = summary;
     this.state.visitCount += 1;
+    // 인식 시점의 카메라 프레임을 beforeImage로 저장
+    this.state.beforeImage = this.lastCameraFrame
+      ? `data:image/jpeg;base64,${this.lastCameraFrame}`
+      : null;
     this.events.onArtifactRecognized(summary);
 
     this.session?.sendToolResponse({
