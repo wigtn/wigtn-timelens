@@ -57,7 +57,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="relative min-h-dvh flex flex-col items-center justify-center bg-black overflow-hidden">
+    <div className="relative min-h-dvh flex flex-col items-center bg-black overflow-x-hidden overflow-y-auto">
       {/* Animated background gradient orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
@@ -94,7 +94,7 @@ export default function LandingPage() {
       />
 
       {/* Content */}
-      <div className="relative z-10 w-full max-w-md px-6 py-12">
+      <div className="relative z-10 w-full max-w-md px-6 py-12 my-auto">
         {/* Logo + Title */}
         <div
           className="text-center transition-all duration-700 ease-out"
