@@ -5,37 +5,53 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getGeminiClient } from '@back/lib/gemini/client';
 import {
   buildRestorationPrompt,
   generateRestorationImage,
 } from '@back/lib/gemini/flash-image';
+import { classifyGeminiError } from '@back/lib/gemini/errors';
+import { formatZodErrors } from '@back/lib/validation';
 import type {
-  RestorationRequest,
   RestorationResponse,
   RestorationErrorResponse,
 } from '@shared/types/restoration';
 
 const MAX_IMAGE_SIZE = 7 * 1024 * 1024; // 7MB
 
+const restoreRequestSchema = z.object({
+  artifactName: z.string().min(1),
+  era: z.string().min(1),
+  artifactType: z.string().optional(),
+  damageDescription: z.string().optional(),
+  referenceImage: z.string().optional(),
+  referenceImageMimeType: z.string().optional(),
+  isArchitecture: z.boolean(),
+  siteName: z.string().optional(),
+  currentDescription: z.string().optional(),
+});
+
 export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<RestorationResponse | RestorationErrorResponse>> {
   try {
-    const body = (await request.json()) as RestorationRequest;
+    const raw = await request.json();
+    const parsed = restoreRequestSchema.safeParse(raw);
 
-    // 필수 필드 검증
-    if (!body.artifactName || !body.era) {
+    if (!parsed.success) {
       return NextResponse.json(
         {
           success: false as const,
-          error: 'artifactName and era are required',
+          error: formatZodErrors(parsed.error.issues),
           code: 'GENERATION_FAILED' as const,
           retryable: false,
         },
         { status: 400 },
       );
     }
+
+    const body = parsed.data;
 
     // 참조 이미지 크기 검증
     if (body.referenceImage) {
@@ -53,10 +69,8 @@ export async function POST(
       }
     }
 
-    // Gemini 클라이언트 획득
     const client = getGeminiClient();
 
-    // 프롬프트 생성
     const prompt = buildRestorationPrompt({
       artifactName: body.artifactName,
       era: body.era,
@@ -67,15 +81,14 @@ export async function POST(
       currentDescription: body.currentDescription,
     });
 
-    // 이미지 생성 호출
     const startTime = Date.now();
 
     const result = await generateRestorationImage(client, {
       prompt,
       referenceImage: body.referenceImage
-        ? { data: body.referenceImage, mimeType: 'image/jpeg' }
+        ? { data: body.referenceImage, mimeType: body.referenceImageMimeType ?? 'image/jpeg' }
         : undefined,
-      timeoutMs: 30000,
+      timeoutMs: 60000,
     });
 
     const generationTimeMs = Date.now() - startTime;
@@ -93,41 +106,16 @@ export async function POST(
   } catch (error) {
     console.error('[/api/restore] Error:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
-
-    let code: RestorationErrorResponse['code'] = 'GENERATION_FAILED';
-    let retryable = true;
-    let status = 500;
-
-    if (message.includes('TIMEOUT')) {
-      code = 'TIMEOUT';
-      retryable = true;
-      status = 504;
-    } else if (
-      message.includes('SAFETY') ||
-      message.includes('blocked') ||
-      message.includes('filtered')
-    ) {
-      code = 'CONTENT_FILTERED';
-      retryable = false;
-      status = 422;
-    } else if (
-      message.includes('429') ||
-      message.includes('RATE') ||
-      message.includes('quota')
-    ) {
-      code = 'RATE_LIMITED';
-      retryable = true;
-      status = 429;
-    }
+    const classified = classifyGeminiError(message);
 
     return NextResponse.json(
       {
         success: false as const,
         error: message,
-        code,
-        retryable,
+        code: classified.code,
+        retryable: classified.retryable,
       },
-      { status },
+      { status: classified.httpStatus },
     );
   }
 }

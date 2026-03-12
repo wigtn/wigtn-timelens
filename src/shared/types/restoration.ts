@@ -26,6 +26,7 @@ export interface RestorationRequest {
   artifactType?: ArtifactCategory;
   damageDescription?: string;
   referenceImage?: string;
+  referenceImageMimeType?: string;
   isArchitecture: boolean;
   siteName?: string;
   currentDescription?: string;

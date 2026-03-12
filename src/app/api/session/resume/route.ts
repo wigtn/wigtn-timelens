@@ -5,36 +5,37 @@
 // ============================================================
 
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getGeminiClient } from '@back/lib/gemini/client';
-import type { ApiResponse, ResumeSessionResponse, ResumeSessionRequest } from '@shared/types/api';
+import { createEphemeralToken } from '@back/lib/gemini/token';
+import { formatZodErrors } from '@back/lib/validation';
+import type { ApiResponse, ResumeSessionResponse } from '@shared/types/api';
+
+const resumeSessionSchema = z.object({
+  sessionId: z.string().min(1, 'sessionId is required'),
+});
 
 export async function POST(request: Request): Promise<NextResponse<ApiResponse<ResumeSessionResponse>>> {
   try {
-    const body = (await request.json()) as ResumeSessionRequest;
+    const raw = await request.json();
+    const parsed = resumeSessionSchema.safeParse(raw);
 
-    if (!body.sessionId) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: { code: 'INVALID_REQUEST', message: 'sessionId is required', retryable: false } },
+        { success: false, error: { code: 'INVALID_REQUEST', message: formatZodErrors(parsed.error.issues), retryable: false } },
         { status: 400 },
       );
     }
 
     const ai = getGeminiClient();
-
-    const token = await ai.authTokens.create({
-      config: {
-        uses: 1,
-        expireTime: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-        httpOptions: { apiVersion: 'v1alpha' },
-      },
-    });
+    const token = await createEphemeralToken(ai);
 
     return NextResponse.json({
       success: true,
       data: {
-        wsUrl: token.name ?? '',
+        wsUrl: token.name,
         context: '',
-        expiresAt: Date.now() + 30 * 60 * 1000,
+        expiresAt: token.expiresAt,
       },
     });
   } catch (err) {

@@ -11,6 +11,7 @@ import { randomBytes } from 'crypto';
 import { z } from 'zod';
 import { getGeminiClient } from '@back/lib/gemini/client';
 import { generateId } from '@back/lib/firebase/firestore';
+import { formatZodErrors } from '@back/lib/validation';
 import type { DiaryGenerateResponse, DiaryEntry, DiaryVisitInput } from '@shared/types/diary';
 import type { ApiResponse } from '@shared/types/api';
 
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: {
             code: 'INVALID_PARAMS',
-            message: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join(', '),
+            message: formatZodErrors(parsed.error.issues),
             retryable: false,
           },
         },
@@ -114,13 +115,19 @@ export async function POST(request: NextRequest) {
     const ai = getGeminiClient();
     const prompt = buildDiaryPrompt(visits);
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: prompt,
-      config: {
-        responseModalities: [Modality.TEXT, Modality.IMAGE],
-      },
-    });
+    const DIARY_TIMEOUT_MS = 60000;
+    const response = await Promise.race([
+      ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: [{ role: 'user' as const, parts: [{ text: prompt }] }],
+        config: {
+          responseModalities: [Modality.TEXT, Modality.IMAGE],
+        },
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('TIMEOUT: diary generation exceeded 60s')), DIARY_TIMEOUT_MS),
+      ),
+    ]);
 
     const responseParts = response.candidates?.[0]?.content?.parts;
     if (!responseParts || responseParts.length === 0) {

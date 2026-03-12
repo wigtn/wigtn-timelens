@@ -135,7 +135,7 @@ export async function generateRestorationImage(
     throw new Error('Prompt is required');
   }
 
-  const timeoutMs = options.timeoutMs ?? 30000;
+  const timeoutMs = options.timeoutMs ?? 60000;
 
   // contents 구성: 참조 이미지 유무에 따라 분기
   const contents = options.referenceImage
@@ -158,7 +158,7 @@ export async function generateRestorationImage(
   // Promise.race로 타임아웃 구현
   const response = await Promise.race([
     client.models.generateContent({
-      model: 'gemini-2.5-flash-image',
+      model: 'gemini-2.5-flash-image-preview',
       contents,
       config: {
         responseModalities: [Modality.TEXT, Modality.IMAGE],
@@ -192,7 +192,9 @@ export async function generateRestorationImage(
 
   for (const part of parts) {
     if (part.inlineData?.mimeType?.startsWith('image/')) {
-      imageBase64 = part.inlineData.data ?? '';
+      const data = part.inlineData.data ?? '';
+      if (!data) continue; // skip empty image data
+      imageBase64 = data;
       mimeType = part.inlineData.mimeType;
     }
     if (part.text) {
