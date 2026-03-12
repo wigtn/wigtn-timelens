@@ -29,6 +29,23 @@ import type { AudioState, AgentType, Civilization } from '@shared/types/common';
 
 // ── 유틸리티 ────────────────────────────────────────────────
 
+/**
+ * STT 출력의 불필요한 공백을 정리한다.
+ * - 구두점 앞 공백 제거 (예: "괜찮 ." → "괜찮.")
+ * - 한글 뒤 공백 + 1음절 한글 패턴 병합 (예: "큐레 이터" → "큐레이터")
+ * - 연속 공백 축소
+ */
+function cleanSttText(text: string): string {
+  return text
+    // 구두점 앞 공백 제거
+    .replace(/\s+([.,!?])/g, '$1')
+    // 한글 + 공백 + 한글 1음절 + 한글 (분리된 음절 병합)
+    .replace(/([\uAC00-\uD7AF])\s([\uAC00-\uD7AF])([\uAC00-\uD7AF])/g, '$1$2$3')
+    // 연속 공백 축소
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 const VALID_CIVILIZATIONS: ReadonlySet<string> = new Set<Civilization>([
   'Greek', 'Roman', 'Egyptian', 'Mesopotamian', 'Chinese',
   'Japanese', 'Korean', 'Indian', 'Persian', 'Mayan', 'Other',
@@ -148,22 +165,25 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
     },
 
     onUserSpeech: (data) => {
+      const cleaned = cleanSttText(data.text);
+      if (!cleaned) return;
+
       setters.setTranscript(prev => {
         const last = prev[prev.length - 1];
         // 같은 유저 턴이면 이어붙이기 (3초 내)
         if (last && last.role === 'user' && Date.now() - last.timestamp < 3000) {
           // 서브스트링이면 교체 (더 긴 버전으로 업데이트)
-          if (data.text.includes(last.text)) {
+          if (cleaned.includes(last.text)) {
             return [
               ...prev.slice(0, -1),
-              { ...last, text: data.text, timestamp: Date.now() },
+              { ...last, text: cleaned, timestamp: Date.now() },
             ];
           }
           // 완전히 다른 텍스트면 이어붙이기
-          if (!last.text.includes(data.text)) {
+          if (!last.text.includes(cleaned)) {
             return [
               ...prev.slice(0, -1),
-              { ...last, text: last.text + ' ' + data.text, timestamp: Date.now() },
+              { ...last, text: last.text + ' ' + cleaned, timestamp: Date.now() },
             ];
           }
           return prev;
@@ -174,7 +194,7 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
           {
             id: `u-${Date.now()}`,
             role: 'user',
-            text: data.text,
+            text: cleaned,
             timestamp: Date.now(),
           },
         ];
