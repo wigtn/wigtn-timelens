@@ -82,6 +82,7 @@ export default function MainPage() {
   }, []);
 
   const connectWithContext = useCallback(async (museum?: MuseumContext) => {
+    console.log('[page] connectWithContext called, museum:', museum?.name, 'locale:', locale);
     const userLoc = geo.latitude && geo.longitude
       ? { lat: geo.latitude, lng: geo.longitude }
       : undefined;
@@ -90,15 +91,17 @@ export default function MainPage() {
       museum,
       userLocation: userLoc,
     });
+    console.log('[page] connectWithContext done');
   }, [connect, geo.latitude, geo.longitude, locale]);
 
   const handleMuseumSelect = useCallback(async (museum: MuseumContext) => {
+    console.log('[page] handleMuseumSelect:', museum.name);
     setMuseumSelected(true);
     setSplashMuseum({ name: museum.name, photoUrl: museum.photoUrl });
     try {
       await connectWithContext(museum);
     } catch (error) {
-      console.error('Failed to connect:', error);
+      console.error('[page] Failed to connect:', error);
     }
   }, [connectWithContext]);
 

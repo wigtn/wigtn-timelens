@@ -19,7 +19,7 @@ export interface EphemeralToken {
 export async function createEphemeralToken(ai: GoogleGenAI): Promise<EphemeralToken> {
   const token = await ai.authTokens.create({
     config: {
-      uses: 1,
+      uses: 5,
       expireTime: new Date(Date.now() + TOKEN_TTL_MS).toISOString(),
       httpOptions: { apiVersion: 'v1alpha' },
     },
