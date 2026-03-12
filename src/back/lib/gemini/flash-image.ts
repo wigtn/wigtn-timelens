@@ -158,7 +158,7 @@ export async function generateRestorationImage(
   // Promise.race로 타임아웃 구현
   const response = await Promise.race([
     client.models.generateContent({
-      model: 'gemini-2.5-flash-image-preview',
+      model: 'gemini-2.5-flash-image',
       contents,
       config: {
         responseModalities: [Modality.TEXT, Modality.IMAGE],

@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     const DIARY_TIMEOUT_MS = 60000;
     const response = await Promise.race([
       ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: [{ role: 'user' as const, parts: [{ text: prompt }] }],
         config: {
           responseModalities: [Modality.TEXT, Modality.IMAGE],
