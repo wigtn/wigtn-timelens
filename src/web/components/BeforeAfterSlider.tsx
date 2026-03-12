@@ -115,7 +115,7 @@ export function BeforeAfterSlider({
       {/* 슬라이더 컨테이너 */}
       <div
         ref={containerRef}
-        className="relative w-full aspect-square overflow-hidden rounded-xl select-none"
+        className="relative w-full aspect-[4/3] overflow-hidden rounded-xl select-none"
       >
         {/* Layer 1: After 이미지 (전체) */}
         {/* eslint-disable-next-line @next/next/no-img-element */}

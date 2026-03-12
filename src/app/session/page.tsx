@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mic, MicOff, BookOpen, Camera, CameraOff, Download, LogOut } from 'lucide-react';
+import { Mic, MicOff, BookOpen, Camera, CameraOff, LogOut } from 'lucide-react';
 import { cn } from '@web/lib/utils';
 import { useT } from '@web/lib/i18n';
 import type { Locale } from '@shared/i18n';
@@ -22,6 +22,7 @@ import MuseumSelector from '@web/components/MuseumSelector';
 import OnboardingSplash from '@web/components/OnboardingSplash';
 import TranscriptChat from '@web/components/TranscriptChat';
 import { RestorationOverlay } from '@web/components/RestorationOverlay';
+import { RestorationResult } from '@web/components/RestorationResult';
 import NearbySites from '@web/components/NearbySites';
 import TopicChip from '@web/components/TopicChip';
 import LanguageSelector from '@web/components/LanguageSelector';
@@ -44,6 +45,7 @@ export default function MainPage() {
     discoverySites,
     diaryResult,
     beforeImage,
+    clearToolResult,
   } = useLiveSession();
 
   const router = useRouter();
@@ -163,6 +165,16 @@ export default function MainPage() {
       router.push(`/diary/${diaryResult.diaryId}`);
     }
   }, [diaryResult, router]);
+
+  // 복원 완료 시점에만 카메라 한 번 닫기 (이후 사용자가 다시 열 수 있음)
+  useEffect(() => {
+    if (restorationState.status === 'ready' && isCameraOpen) {
+      setIsCameraOpen(false);
+      toggleCamera(false);
+    }
+    // isCameraOpen / toggleCamera 는 의도적으로 dep 제외 — status 전환 시 1회만 실행
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restorationState.status]);
 
   // ── Action handlers ─────────────────────────────────────
 
@@ -304,21 +316,13 @@ export default function MainPage() {
         )}
 
         {/* Restoration result */}
-        {restorationState.status === 'ready' && !isCameraOpen && (
-          <div className="shrink-0 mx-4 mt-2 p-3 glass rounded-2xl border-timelens-gold/10">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-timelens-gold font-semibold tracking-wide uppercase">
-                {t('session.restorationDone')}
-              </span>
-              <button
-                onClick={handleDownloadRestoration}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-timelens-gold/10 rounded-full text-xs text-timelens-gold
-                           active:scale-95 transition-transform border border-timelens-gold/20"
-              >
-                <Download className="w-3 h-3" />
-                {t('session.save')}
-              </button>
-            </div>
+        {!isCameraOpen && restorationState.status !== 'idle' && (
+          <div className="shrink-0 mx-4 mt-2 max-h-[60vh] overflow-y-auto">
+            <RestorationResult
+              state={restorationState}
+              onSave={handleDownloadRestoration}
+              onClose={clearToolResult}
+            />
           </div>
         )}
 
@@ -346,15 +350,17 @@ export default function MainPage() {
             onCapturePhoto={() => cameraViewRef.current?.capturePhoto() ?? ''}
           />
           <RestorationOverlay state={restorationState} beforeImage={beforeImage} locale={locale} />
-          <div className="absolute bottom-3 left-0 right-0 flex justify-center z-10">
-            <button
-              onClick={handleCapture}
-              className="px-5 py-2 bg-timelens-gold/90 text-black rounded-full font-semibold text-xs
-                         active:scale-95 transition-transform shadow-lg shadow-timelens-gold/30"
-            >
-              {t('session.capture')}
-            </button>
-          </div>
+          {restorationState.status === 'idle' && (
+            <div className="absolute bottom-3 left-0 right-0 flex justify-center z-10">
+              <button
+                onClick={handleCapture}
+                className="px-5 py-2 bg-timelens-gold/90 text-black rounded-full font-semibold text-xs
+                           active:scale-95 transition-transform shadow-lg shadow-timelens-gold/30"
+              >
+                {t('session.capture')}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -15,6 +15,7 @@ export interface RestorationResultProps {
   onRetry?: () => void;
   onSave?: () => void;
   onShare?: () => void;
+  onClose?: () => void;
 }
 
 export function RestorationResult({
@@ -22,6 +23,7 @@ export function RestorationResult({
   onRetry,
   onSave,
   onShare,
+  onClose,
 }: RestorationResultProps) {
   // --- 로딩 프로그레스 시뮬레이션 ---
   const [simulatedProgress, setSimulatedProgress] = useState(0);
@@ -130,13 +132,26 @@ export function RestorationResult({
         isTransitioning ? 'opacity-0' : 'opacity-100'
       }`}
     >
-      <div className="text-center">
-        <h3 className="text-lg font-bold text-white">
-          {state.data.artifactName}
-        </h3>
-        <p className="text-sm text-gray-300">
-          Restored: {state.data.era}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-white">
+            {state.data.artifactName}
+          </h3>
+          <p className="text-sm text-gray-300">
+            Restored: {state.data.era}
+          </p>
+        </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/20 transition-colors shrink-0 mt-0.5"
+            aria-label="Close restoration result"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+          </button>
+        )}
       </div>
       <BeforeAfterSlider
         beforeImage={state.data.referenceImageUrl ?? ''}

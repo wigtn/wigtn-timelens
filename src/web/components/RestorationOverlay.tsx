@@ -135,7 +135,7 @@ export function RestorationOverlay({ state, beforeImage: _beforeImage, locale = 
       {/* 타임라인 슬라이더 (하단) */}
       {showTimeline && state.status === 'ready' && (
         <div
-          className="absolute bottom-28 left-0 right-0 px-6 pointer-events-auto"
+          className="absolute bottom-4 left-0 right-0 px-4 pointer-events-auto"
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
         >
