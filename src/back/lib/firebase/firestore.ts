@@ -73,11 +73,14 @@ export async function createSession(
     userId: data.userId,
     language: data.language,
     status: 'active',
-    liveApiSessionId: data.liveApiSessionId,
     createdAt: now,
     updatedAt: now,
     expiresAt,
   };
+  // Firestore doesn't accept undefined values
+  if (data.liveApiSessionId) {
+    sessionDoc.liveApiSessionId = data.liveApiSessionId;
+  }
 
   await setDoc(doc(getDb(), 'sessions', sessionId), sessionDoc);
   return sessionDoc;

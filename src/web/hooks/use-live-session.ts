@@ -102,35 +102,73 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
 
     onTranscript: (data) => {
       setters.setTranscript(prev => {
-        const last = prev[prev.length - 1];
-        if (last && last.role === 'assistant' && !last.sources) {
+        // isFinal=true + sources: 소스 첨부 후 턴 종료
+        if (data.isFinal && data.sources?.length) {
+          const last = prev[prev.length - 1];
+          if (last && last.role === 'assistant') {
+            return [
+              ...prev.slice(0, -1),
+              { ...last, sources: data.sources },
+            ];
+          }
+          return prev;
+        }
+        // isFinal=true (소스 없음): 현재 턴 종료 마커 (다음 delta는 새 메시지로)
+        if (data.isFinal) {
+          const last = prev[prev.length - 1];
+          if (last && last.role === 'assistant') {
+            return [
+              ...prev.slice(0, -1),
+              { ...last, id: `${last.id}-final` },
+            ];
+          }
+          return prev;
+        }
+        // delta 추가: 마지막 assistant 메시지에 이어붙이기
+        if (data.delta) {
+          const last = prev[prev.length - 1];
+          if (last && last.role === 'assistant' && !last.id.endsWith('-final') && !last.sources) {
+            return [
+              ...prev.slice(0, -1),
+              { ...last, text: last.text + data.delta },
+            ];
+          }
           return [
-            ...prev.slice(0, -1),
-            { ...last, text: last.text + data.delta },
+            ...prev,
+            {
+              id: `t-${Date.now()}`,
+              role: 'assistant',
+              text: data.delta,
+              timestamp: Date.now(),
+            },
           ];
         }
-        return [
-          ...prev,
-          {
-            id: `t-${Date.now()}`,
-            role: 'assistant',
-            text: data.delta,
-            timestamp: Date.now(),
-            sources: data.sources,
-          },
-        ];
+        return prev;
       });
     },
 
     onUserSpeech: (data) => {
       setters.setTranscript(prev => {
-        // 중복 방지: 최근 2초 내 같은 텍스트 또는 서브스트링이면 무시
         const last = prev[prev.length - 1];
-        if (last && last.role === 'user' && Date.now() - last.timestamp < 2000) {
-          if (last.text.includes(data.text) || data.text.includes(last.text)) {
-            return prev;
+        // 같은 유저 턴이면 이어붙이기 (3초 내)
+        if (last && last.role === 'user' && Date.now() - last.timestamp < 3000) {
+          // 서브스트링이면 교체 (더 긴 버전으로 업데이트)
+          if (data.text.includes(last.text)) {
+            return [
+              ...prev.slice(0, -1),
+              { ...last, text: data.text, timestamp: Date.now() },
+            ];
           }
+          // 완전히 다른 텍스트면 이어붙이기
+          if (!last.text.includes(data.text)) {
+            return [
+              ...prev.slice(0, -1),
+              { ...last, text: last.text + ' ' + data.text, timestamp: Date.now() },
+            ];
+          }
+          return prev;
         }
+        // 새 유저 턴
         return [
           ...prev,
           {
@@ -239,6 +277,9 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
   };
 }
 
+const DEBUG = process.env.NODE_ENV === 'development';
+function dbg(...args: unknown[]) { if (DEBUG) console.log(...args); }
+
 // ── 초기 상태 ───────────────────────────────────────────────
 
 const INITIAL_STATE: SessionState = {
@@ -296,37 +337,55 @@ export function useLiveSession(): UseLiveSessionReturn {
   const connect = useCallback(async (config: SessionConfig) => {
     const language = config.language;
     languageRef.current = language;
+    dbg('[connect] START language:', language);
 
     try {
-      // 1. Firebase 익명 인증 (미설정 시 건너뜀)
+      // 1. Firebase 익명 인증 (5초 타임아웃, 실패 시 건너뜀)
+      dbg('[connect] 1. Firebase auth...');
       try {
-        const user = await signInAnonymous();
+        const user = await Promise.race([
+          signInAnonymous(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Firebase auth timeout')), 5000)
+          ),
+        ]);
         userIdRef.current = user.uid;
+        dbg('[connect] 1. Auth OK uid:', user.uid.slice(0, 8));
       } catch (authErr) {
-        console.warn('[useLiveSession] Firebase auth skipped:', authErr);
+        console.warn('[connect] 1. Auth skipped:', authErr);
         userIdRef.current = `anon-${Date.now()}`;
       }
 
       // 2. 서버에서 Ephemeral Token 획득
+      dbg('[connect] 2. Fetching /api/session...');
       const res = await fetch('/api/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ language }),
       });
       const json = await res.json();
+      dbg('[connect] 2. Session response:', json.success, json.data?.sessionId?.slice(0, 8));
       if (!json.success) {
         throw new Error(json.error?.message || 'Failed to create session');
       }
       const { sessionId, wsUrl: token } = json.data;
       sessionIdRef.current = sessionId;
 
-      // 3. Firestore에 세션 문서 생성 (미설정 시 건너뜀)
+      // 3. Firestore에 세션 문서 생성 (5초 타임아웃, 실패 시 건너뜀)
+      dbg('[connect] 3. Firestore session...');
       try {
-        await createSession(sessionId, { userId: userIdRef.current, language });
+        await Promise.race([
+          createSession(sessionId, { userId: userIdRef.current, language }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Firestore createSession timeout')), 5000)
+          ),
+        ]);
+        dbg('[connect] 3. Firestore OK');
       } catch (fsErr) {
-        console.warn('[useLiveSession] Firestore session skipped:', fsErr);
+        console.warn('[connect] 3. Firestore skipped:', fsErr);
       }
 
+      dbg('[connect] 4. Creating LiveSession...');
       // 4. 이벤트 핸들러 + LiveSession 생성
       const refs: SessionRefs = {
         liveSession: liveSessionRef,
@@ -370,13 +429,16 @@ export function useLiveSession(): UseLiveSessionReturn {
       });
 
       // 7. LiveSession 연결
+      dbg('[connect] 7. Connecting LiveSession...');
       const liveConfig: LiveSessionConfig = {
         token, language, sessionId,
         museum: config.museum ? { name: config.museum.name, address: config.museum.address } : undefined,
       };
       await liveSession.connect(liveConfig);
+      dbg('[connect] 7. LiveSession connected!');
 
       // 8. AudioCapture
+      dbg('[connect] 8. Starting audio capture...');
       const audioCapture = createAudioCapture({
         onChunk: (base64Pcm) => liveSessionRef.current?.sendAudio(base64Pcm),
         onLevelChange: () => {},
@@ -385,17 +447,24 @@ export function useLiveSession(): UseLiveSessionReturn {
       await audioCapture.start();
 
       // 9. CameraCapture (프리뷰만 — 프레임 상시 전송 안 함, 온디맨드)
+      dbg('[connect] 9. Starting camera...');
       const cameraCapture = createCameraCapture();
       cameraCaptureRef.current = cameraCapture;
-      await cameraCapture.start();
+      try {
+        await cameraCapture.start();
+        dbg('[connect] 9. Camera OK');
+      } catch (cameraErr) {
+        console.warn('[connect] 9. Camera skipped:', cameraErr);
+      }
 
       // 9b. Frame capture handler for restoration before-image
       liveSession.setFrameCaptureHandler(() => cameraCapture.captureFrame());
 
       // 10. 상태 업데이트
+      dbg('[connect] 10. DONE — setting connected');
       setSessionState(prev => ({ ...prev, sessionId, status: 'connected' }));
     } catch (err) {
-      console.error('[useLiveSession] Connect failed:', err);
+      console.error('[connect] FAILED:', err);
       setSessionState(prev => ({ ...prev, isFallbackMode: true, status: 'disconnected' }));
     }
   }, []);
@@ -427,11 +496,9 @@ export function useLiveSession(): UseLiveSessionReturn {
   }, []);
 
   const toggleCamera = useCallback((enabled: boolean) => {
-    if (enabled) {
-      cameraCaptureRef.current?.startFrameLoop((base64Jpeg) => {
-        liveSessionRef.current?.sendVideoFrame(base64Jpeg);
-      });
-    } else {
+    // 카메라 ON/OFF는 프리뷰만 제어 — 프레임 스트리밍 없음
+    // 인식은 캡처 버튼(sendPhoto)으로만 트리거
+    if (!enabled) {
       cameraCaptureRef.current?.stopFrameLoop();
     }
   }, []);

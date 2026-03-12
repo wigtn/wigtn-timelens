@@ -75,9 +75,9 @@ export class LiveSession {
         inputAudioTranscription: {},
         outputAudioTranscription: {},
         contextWindowCompression: { slidingWindow: {} },
-        sessionResumption: config.resumeHandle
-          ? { handle: config.resumeHandle }
-          : {},
+        ...(config.resumeHandle
+          ? { sessionResumption: { handle: config.resumeHandle } }
+          : {}),
       },
       callbacks: {
         onopen: () => this.handleOpen(),
@@ -125,7 +125,10 @@ export class LiveSession {
   }
 
   sendText(text: string): void {
-    if (!this.session || this.state.status !== 'connected') return;
+    if (!this.session || this.state.status !== 'connected') {
+      console.warn('[LiveSession] sendText blocked — status:', this.state.status, 'session:', !!this.session);
+      return;
+    }
     this.session.sendClientContent({
       turns: [{ role: 'user', parts: [{ text }] }],
       turnComplete: true,
@@ -202,7 +205,9 @@ export class LiveSession {
       return;
     }
 
-    // 2. 오디오/텍스트 응답
+    // 2. 오디오 응답 (modelTurn.parts)
+    // NOTE: text parts는 모델의 내부 사고 과정(영어)이므로 표시하지 않음.
+    //       실제 음성 텍스트는 outputTranscription에서만 가져옴.
     if (message.serverContent?.modelTurn?.parts) {
       for (const part of message.serverContent.modelTurn.parts) {
         if (part.inlineData) {
@@ -211,18 +216,12 @@ export class LiveSession {
             this.updateAudioState('speaking');
           }
         }
-        if (part.text) {
-          this.events.onTranscript({
-            text: part.text,
-            delta: part.text,
-            isFinal: false,
-          });
-        }
       }
     }
 
-    // 3. 턴 완료
+    // 3. 턴 완료 — 현재 트랜스크립트를 확정(isFinal)
     if (message.serverContent?.turnComplete) {
+      this.events.onTranscript({ text: '', delta: '', isFinal: true });
       this.updateAudioState('idle');
     }
 
@@ -246,10 +245,11 @@ export class LiveSession {
       }
     }
 
-    // 7. 입력 트랜스크립션 (사용자 STT)
-    if (message.inputTranscription?.text) {
+    // 7. 입력 트랜스크립션 (사용자 STT) — serverContent 하위
+    const inputTx = message.serverContent?.inputTranscription;
+    if (inputTx?.text) {
       this.events.onUserSpeech({
-        text: message.inputTranscription.text,
+        text: inputTx.text,
         isFinal: true,
       });
       if (this.state.audioState !== 'listening') {
@@ -257,11 +257,12 @@ export class LiveSession {
       }
     }
 
-    // 8. 출력 트랜스크립션 (AI 음성 텍스트)
-    if (message.outputTranscription?.text) {
+    // 8. 출력 트랜스크립션 (AI 음성 텍스트) — serverContent 하위
+    const outputTx = message.serverContent?.outputTranscription;
+    if (outputTx?.text) {
       this.events.onTranscript({
-        text: message.outputTranscription.text,
-        delta: message.outputTranscription.text,
+        text: outputTx.text,
+        delta: outputTx.text,
         isFinal: false,
       });
     }
@@ -409,7 +410,7 @@ export class LiveSession {
       this.session?.sendToolResponse({
         functionResponses: [{
           id: fc.id, name: fc.name,
-          response: { status: 'success', image_url: result.imageUrl, description: result.description },
+          response: { status: 'success', description: result.description },
         }],
       });
     } catch (err) {
@@ -526,20 +527,27 @@ export class LiveSession {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handleError(e: any): void {
-    console.error('[LiveSession] Error:', e);
+    console.error('[LiveSession] Error:', e?.message ?? e, e?.code, e?.reason);
     this.emitError('SESSION_ERROR', e?.message || 'Connection error', true, 'retry');
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handleClose(e: any): void {
-    if (e?.code === 1008) {
-      this.updateStatus('expired');
-      this.emitError('SESSION_EXPIRED', 'Session token expired or invalid', true, 'retry');
-    } else {
-      this.updateStatus('disconnected');
-    }
+    const code = e?.code;
+    const reason = e?.reason ?? '';
+    console.warn('[LiveSession] WebSocket closed:', code, reason);
     this.session = null;
     this.ai = null;
+
+    this.updateStatus('disconnected');
+
+    if (code === 1008) {
+      // 1008 can mean token expired OR unsupported operation
+      this.emitError('SESSION_EXPIRED', reason || 'Session closed by server', true, 'retry');
+    } else if (code !== 1000) {
+      // Unexpected close — trigger reconnect
+      this.emitError('SESSION_ERROR', reason || `WebSocket closed: ${code}`, true, 'retry');
+    }
   }
 
   private updateStatus(status: SessionStatus): void {
