@@ -53,7 +53,7 @@ export interface HealthResponse {
   services: {
     liveApi: boolean;
     imageGen: boolean;
-    firestore: boolean;
+    firebase: boolean;
     placesApi: boolean;
   };
 }

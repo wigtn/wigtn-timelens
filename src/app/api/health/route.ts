@@ -14,7 +14,7 @@ export async function GET(): Promise<NextResponse<ApiResponse<HealthResponse>>> 
   const services = {
     liveApi: !!process.env.GOOGLE_GENAI_API_KEY,
     imageGen: !!process.env.GOOGLE_GENAI_API_KEY,
-    firestore: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    firebase: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID && !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     placesApi: !!process.env.GOOGLE_PLACES_API_KEY,
   };
 
