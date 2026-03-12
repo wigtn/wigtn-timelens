@@ -10,6 +10,8 @@
   --color-timelens-bronze: #8B6914;
   --color-timelens-marble: #F5F0EB;
   --color-timelens-patina: #4A7C59;
+  /* 앱 전체 캔버스 — 따뜻한 앰버 블랙 */
+  --color-canvas: #0F0B07;
 
   /* shadcn/ui 호환 CSS 변수 기반 색상 */
   --color-border: hsl(var(--border));
@@ -51,6 +53,7 @@
 
   /* 커스텀 폰트 패밀리 */
   --font-heading: 'Space Grotesk', sans-serif;
+  --font-display: 'Bricolage Grotesque', sans-serif;
 
   @keyframes scan-line {
     0% { transform: translateY(0%); }
@@ -124,7 +127,7 @@
   }
 
   body {
-    background-color: var(--color-background);
+    background-color: var(--color-canvas);
     color: var(--color-foreground);
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
@@ -256,12 +259,113 @@
   animation: msg-fade-in 0.3s ease-out;
 }
 
+/* TimeLens 로고 shimmer — background-position 방식 */
+@keyframes logo-shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+/* 로고 글자 stagger entrance */
+@keyframes char-in {
+  0%   { opacity: 0; transform: translateY(10px); filter: blur(6px); }
+  100% { opacity: 1; transform: translateY(0);    filter: blur(0); }
+}
+.animate-char-in {
+  animation: char-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 장식선 draw-in */
+@keyframes line-in {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+.animate-line-in {
+  animation: line-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+  transform-origin: center;
+}
+
+/* 서브타이틀 fade-in */
+@keyframes subtitle-in {
+  from { opacity: 0; letter-spacing: 0.3em; }
+  to   { opacity: 1; letter-spacing: 0.2em; }
+}
+.animate-subtitle-in {
+  animation: subtitle-in 0.9s ease-out 0.7s both;
+}
+
+/* Museum card shimmer skeleton */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.animate-shimmer {
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* 랜딩 스크롤 카드 reveal */
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 카메라 뷰파인더 스캔 라인 (h-52 = 208px, alternate로 왕복) */
+@keyframes scan-sweep {
+  from { transform: translateY(0px); }
+  to   { transform: translateY(208px); }
+}
+
+/* 무한 마퀴 (아이템 2벌 배치하여 seamless loop) */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* 발견 카드 레이더 스윕 */
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* 복원 카드 빔 shimmer */
+@keyframes restore-glow {
+  0%, 100% { opacity: 0.7; }
+  50%       { opacity: 1; }
+}
+
+/* 발견 카드 dot 팝 */
+@keyframes dot-pop {
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  60%  { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+}
+
+/* 다이어리 카드 커서 깜빡임 */
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+.animate-blink-cursor {
+  animation: blink-cursor 0.75s step-end infinite;
+}
+
+/* 다이어리 태그 fade-in */
+@keyframes tag-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
   .animate-glow-pulse,
   .animate-live-pulse,
   .animate-scanline,
   .animate-pulse,
+  .animate-shimmer,
+  .animate-logo-shimmer,
+  .animate-char-in,
+  .animate-line-in,
+  .animate-subtitle-in,
   .mic-ripple-ring,
   .animate-discover-slide-up,
   .animate-agent-morph,
