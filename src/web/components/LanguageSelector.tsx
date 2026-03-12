@@ -18,7 +18,7 @@ interface LanguageSelectorProps {
 
 export default function LanguageSelector({ onSelect }: LanguageSelectorProps) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gray-950">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-canvas">
       {/* Glow */}
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full opacity-15 blur-[140px] pointer-events-none"

@@ -1,9 +1,14 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Space_Grotesk } from 'next/font/google';
+import { Inter, Space_Grotesk, Bricolage_Grotesque } from 'next/font/google';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-heading' });
+const bricolage = Bricolage_Grotesque({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-display',
+});
 
 export const metadata: Metadata = {
   title: 'TimeLens - AI Cultural Heritage Companion',
@@ -32,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
+    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} ${bricolage.variable}`}>
       <body className="font-sans bg-black text-white antialiased overflow-hidden">
         {children}
       </body>

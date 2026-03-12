@@ -122,17 +122,16 @@ export default function MainPage() {
   // ── Navigation handlers ─────────────────────────────────
 
   const handleBack = useCallback(() => {
-    // Go back through onboarding steps
     if (museumSelected) {
+      // 세션 중 → 박물관 선택 화면으로
       setMuseumSelected(false);
       setSplashDone(false);
       disconnect?.();
-    } else if (permissionsGranted) {
-      setPermissionsGranted(false);
-    } else if (languageSelected) {
-      setLanguageSelected(false);
+    } else {
+      // 온보딩 중 어느 단계든 → 랜딩 페이지로
+      router.push('/');
     }
-  }, [museumSelected, permissionsGranted, languageSelected, disconnect]);
+  }, [museumSelected, disconnect, router]);
 
   const handleExit = useCallback(() => {
     disconnect?.();

@@ -70,7 +70,7 @@ export default function OnboardingSplash({
   return (
     <div
       className={cn(
-        'fixed inset-0 z-50 flex flex-col items-center justify-center bg-black transition-opacity duration-500',
+        'fixed inset-0 z-50 flex flex-col items-center justify-center bg-canvas transition-opacity duration-500',
         fadeOut ? 'opacity-0 pointer-events-none' : 'opacity-100',
       )}
     >

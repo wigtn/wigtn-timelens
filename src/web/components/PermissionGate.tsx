@@ -135,7 +135,7 @@ export default function PermissionGate({ onGranted, onBack, locale = 'ko' }: Per
   };
 
   return (
-    <div className="fixed inset-0 bg-black flex flex-col items-center justify-center px-6">
+    <div className="fixed inset-0 bg-canvas flex flex-col items-center justify-center px-6">
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[400px] rounded-full opacity-20 blur-[120px] pointer-events-none"
         style={{ background: 'radial-gradient(circle, #D4A574 0%, transparent 70%)' }}
