@@ -15,6 +15,15 @@ import type { DiaryVisitInput } from '@shared/types/diary';
 import type { AudioState, SessionStatus, AgentType, AppError } from '@shared/types/common';
 import { LIVE_API_TOOLS, getSystemInstruction } from '@shared/gemini/tools';
 
+/**
+ * 제어 문자 제거 — Gemini Live API가 function call 전환 시
+ * 제어 문자(\x00-\x1F, \x7F 등)를 트랜스크립션에 포함시킬 수 있다.
+ * 줄바꿈/탭은 유지.
+ */
+function sanitizeTranscript(text: string): string {
+  return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim();
+}
+
 export interface LiveSessionConfig {
   token: string;
   language: string;
@@ -252,23 +261,29 @@ export class LiveSession {
     // 7. 입력 트랜스크립션 (사용자 STT) — serverContent 하위
     const inputTx = message.serverContent?.inputTranscription;
     if (inputTx?.text) {
-      this.events.onUserSpeech({
-        text: inputTx.text,
-        isFinal: true,
-      });
-      if (this.state.audioState !== 'listening') {
-        this.updateAudioState('listening');
+      const cleaned = sanitizeTranscript(inputTx.text);
+      if (cleaned) {
+        this.events.onUserSpeech({
+          text: cleaned,
+          isFinal: true,
+        });
+        if (this.state.audioState !== 'listening') {
+          this.updateAudioState('listening');
+        }
       }
     }
 
     // 8. 출력 트랜스크립션 (AI 음성 텍스트) — serverContent 하위
     const outputTx = message.serverContent?.outputTranscription;
     if (outputTx?.text) {
-      this.events.onTranscript({
-        text: outputTx.text,
-        delta: outputTx.text,
-        isFinal: false,
-      });
+      const cleaned = sanitizeTranscript(outputTx.text);
+      if (cleaned) {
+        this.events.onTranscript({
+          text: cleaned,
+          delta: cleaned,
+          isFinal: false,
+        });
+      }
     }
 
     // 8b. 검색 그라운딩 소스 — 마지막 트랜스크립트에 소스 첨부
