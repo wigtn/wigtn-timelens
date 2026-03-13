@@ -34,9 +34,11 @@ function int16ToFloat32(int16: Int16Array): Float32Array {
 export function createAudioPlayback(): AudioPlayback {
   let audioContext: AudioContext | null = null;
   let gainNode: GainNode | null = null;
-  const queue: AudioBuffer[] = [];
   let nextStartTime = 0;
-  let isCurrentlyPlaying = false;
+  let scheduledSources: AudioBufferSourceNode[] = [];
+
+  // 버퍼 상태 추적
+  const LOOKAHEAD_MS = 50; // 50ms 선행 버퍼
 
   function ensureContext(): void {
     if (!audioContext) {
@@ -49,50 +51,51 @@ export function createAudioPlayback(): AudioPlayback {
     }
   }
 
-  function scheduleNext(): void {
-    if (queue.length === 0 || !audioContext || !gainNode) {
-      isCurrentlyPlaying = false;
-      return;
-    }
-
-    const buffer = queue.shift()!;
-    const source = audioContext.createBufferSource();
-    source.buffer = buffer;
-    source.connect(gainNode);
-
-    const startTime = Math.max(audioContext.currentTime, nextStartTime);
-    source.start(startTime);
-    nextStartTime = startTime + buffer.duration;
-    isCurrentlyPlaying = true;
-
-    source.onended = () => {
-      if (queue.length > 0) {
-        scheduleNext();
-      } else {
-        isCurrentlyPlaying = false;
-      }
-    };
-  }
-
   function enqueue(base64Pcm: string): void {
     ensureContext();
+    if (!audioContext || !gainNode) return;
 
     const int16 = base64ToInt16Array(base64Pcm);
     const float32 = int16ToFloat32(int16);
-    const audioBuffer = audioContext!.createBuffer(1, float32.length, OUTPUT_SAMPLE_RATE);
+    const audioBuffer = audioContext.createBuffer(1, float32.length, OUTPUT_SAMPLE_RATE);
     audioBuffer.getChannelData(0).set(float32);
 
-    queue.push(audioBuffer);
+    // 즉시 스케줄링 (Proactive Scheduling)
+    const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(gainNode);
 
-    if (!isCurrentlyPlaying) {
-      scheduleNext();
-    }
+    const now = audioContext.currentTime;
+    const lookahead = LOOKAHEAD_MS / 1000;
+
+    // 첫 청크이거나 nextStartTime이 지났으면 약간의 lookahead와 함께 시작
+    const startTime = nextStartTime <= now
+      ? now + lookahead
+      : nextStartTime;
+
+    source.start(startTime);
+    nextStartTime = startTime + audioBuffer.duration;
+
+    // 재생 완료된 소스 정리
+    source.onended = () => {
+      const idx = scheduledSources.indexOf(source);
+      if (idx !== -1) scheduledSources.splice(idx, 1);
+    };
+    scheduledSources.push(source);
   }
 
   function flush(): void {
-    queue.length = 0;
+    // 모든 예약된 소스 중지
+    for (const source of scheduledSources) {
+      try {
+        source.stop();
+        source.disconnect();
+      } catch {
+        // 이미 종료된 소스 무시
+      }
+    }
+    scheduledSources = [];
     nextStartTime = 0;
-    isCurrentlyPlaying = false;
   }
 
   function stop(): void {
@@ -114,7 +117,7 @@ export function createAudioPlayback(): AudioPlayback {
     enqueue,
     flush,
     stop,
-    isPlaying: () => isCurrentlyPlaying,
+    isPlaying: () => scheduledSources.length > 0,
     setVolume,
   };
 }
