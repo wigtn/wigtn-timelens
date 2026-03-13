@@ -5,6 +5,7 @@
 
 'use client';
 
+import { Suspense } from 'react';
 import ErrorBoundary from '@web/components/ErrorBoundary';
 import { I18nProvider } from '@web/lib/i18n';
 
@@ -12,9 +13,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   return (
     <ErrorBoundary>
       <I18nProvider>
-        <div className="fixed inset-0 flex flex-col bg-black">
-          {children}
-        </div>
+        <Suspense>
+          <div className="fixed inset-0 flex flex-col bg-black">
+            {children}
+          </div>
+        </Suspense>
       </I18nProvider>
     </ErrorBoundary>
   );

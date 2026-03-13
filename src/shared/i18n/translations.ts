@@ -111,12 +111,20 @@ const translations = {
     en: 'Requesting...',
   },
   'permission.fallbackBtn': {
-    ko: '사진 업로드로 시작하기',
-    en: 'Start with Photo Upload',
+    ko: '권한 없이 계속하기',
+    en: 'Continue without permissions',
   },
   'permission.fallbackNote': {
     ko: '브라우저 설정에서 카메라 권한을 허용하면 실시간 인식 기능을 사용할 수 있습니다.',
     en: 'Enable camera permission in browser settings for real-time recognition.',
+  },
+  'permission.retryBtn': {
+    ko: '권한 다시 요청',
+    en: 'Request Again',
+  },
+  'permission.browserNote': {
+    ko: '계속 거부된다면 브라우저 주소창 잠금 아이콘에서 직접 허용해주세요',
+    en: 'If still blocked, tap the lock icon in your browser address bar',
   },
 
   // ── Museum Selector ───────────────────────────────────────
@@ -155,6 +163,26 @@ const translations = {
   'museum.closed': {
     ko: '영업 종료',
     en: 'Closed',
+  },
+  'museum.locationLoading': {
+    ko: '위치 확인 중...',
+    en: 'Detecting location...',
+  },
+  'museum.locationDenied': {
+    ko: '위치 정보 없이 탐색 중',
+    en: 'Browsing without location',
+  },
+  'museum.locationDeniedNote': {
+    ko: '위치를 허용하면 주변 장소를 바로 찾아드려요',
+    en: 'Allow location to find nearby places',
+  },
+  'museum.confirmStart': {
+    ko: '여기서 시작',
+    en: 'Start Here',
+  },
+  'museum.confirmCancel': {
+    ko: '취소',
+    en: 'Cancel',
   },
 
   // ── Onboarding Splash ─────────────────────────────────────

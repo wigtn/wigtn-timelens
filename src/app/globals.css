@@ -354,6 +354,46 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+
+/* ── 렌즈 전환 오버레이 ── */
+@keyframes tl-el-in {
+  from { opacity: 0; transform: scale(0.4); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes tl-ripple {
+  0%   { opacity: 0.5; transform: scale(1); }
+  100% { opacity: 0;   transform: scale(3.2); }
+}
+
+/* ── 렌즈 glow burst (클래스로 적용, box-shadow 직접 애니메이션 X) ── */
+.tl-lens-glow {
+  animation: tl-lens-burst 0.5s ease forwards;
+}
+
+@keyframes tl-lens-burst {
+  0%   { box-shadow: 0 0 0px rgba(212,165,116,0); }
+  40%  { box-shadow: 0 0 60px rgba(212,165,116,0.55), 0 0 120px rgba(212,165,116,0.25); }
+  100% { box-shadow: 0 0 20px rgba(212,165,116,0.15); }
+}
+
+/* ── View Transitions API 페이지 전환 ── */
+::view-transition-old(root) {
+  animation: vt-old 0.35s ease forwards;
+}
+::view-transition-new(root) {
+  animation: vt-new 0.35s ease forwards;
+}
+
+@keyframes vt-old {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes vt-new {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee,
@@ -369,7 +409,8 @@
   .mic-ripple-ring,
   .animate-discover-slide-up,
   .animate-agent-morph,
-  .animate-msg-fade-in {
+  .animate-msg-fade-in,
+  .tl-lens-glow {
     animation: none;
   }
 }

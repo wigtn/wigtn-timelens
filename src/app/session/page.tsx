@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Mic, MicOff, BookOpen, Camera, CameraOff, LogOut } from 'lucide-react';
 import { cn } from '@web/lib/utils';
 import { useT } from '@web/lib/i18n';
@@ -49,12 +49,21 @@ export default function MainPage() {
   } = useLiveSession();
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const geo = useGeolocation();
   const { locale, setLocale, t } = useT();
 
+  // 랜딩 페이지에서 언어 전달 시 자동 적용
+  const langParam = searchParams.get('lang') as Locale | null;
+
   // Onboarding flow state
-  const [languageSelected, setLanguageSelected] = useState(false);
-  const [permissionsGranted, setPermissionsGranted] = useState(false);
+  const [languageSelected, setLanguageSelected] = useState(() => {
+    return langParam === 'ko' || langParam === 'en';
+  });
+  // localStorage 캐시로 이전에 허용한 경우 즉시 스킵
+  const [permissionsGranted, setPermissionsGranted] = useState(() =>
+    typeof window !== 'undefined' && localStorage.getItem('timelens_perms') === '1'
+  );
   const [museumSelected, setMuseumSelected] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
   const [splashMuseum, setSplashMuseum] = useState<{ name?: string; photoUrl?: string }>({});
@@ -70,6 +79,15 @@ export default function MainPage() {
   const cameraViewRef = useRef<CameraViewRef>(null);
   const prevAgentRef = useRef(activeAgent);
 
+  // 랜딩에서 전달된 언어 파라미터 적용
+  useEffect(() => {
+    if (langParam === 'ko' || langParam === 'en') {
+      setLocale(langParam);
+    }
+  // 마운트 1회만
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Onboarding handlers ─────────────────────────────────
 
   const handleLanguageSelect = useCallback((selected: Locale) => {
@@ -78,6 +96,7 @@ export default function MainPage() {
   }, [setLocale]);
 
   const handlePermissionsGranted = useCallback(() => {
+    localStorage.setItem('timelens_perms', '1');
     setPermissionsGranted(true);
   }, []);
 
@@ -244,6 +263,8 @@ export default function MainPage() {
     return (
       <MuseumSelector
         userLocation={userLocation}
+        isLoadingLocation={geo.isLoading}
+        locationDenied={!geo.isLoading && !userLocation && !!geo.error}
         onSelect={handleMuseumSelect}
         onSkip={handleMuseumSkip}
         onBack={handleBack}
