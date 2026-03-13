@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Mic, MicOff, BookOpen, Camera, CameraOff, LogOut } from 'lucide-react';
+import { Mic, MicOff, BookOpen, Camera, CameraOff, LogOut, Square } from 'lucide-react';
 import { cn } from '@web/lib/utils';
 import { useT } from '@web/lib/i18n';
 import type { Locale } from '@shared/i18n';
@@ -34,6 +34,7 @@ export default function MainPage() {
     disconnect,
     toggleMic,
     toggleCamera,
+    interrupt,
     requestTopicDetail,
     sendTextMessage,
     sendPhoto,
@@ -75,6 +76,7 @@ export default function MainPage() {
   const [agentTransition, setAgentTransition] = useState<AgentSwitchData | null>(null);
   const [isAgentTransitioning, setIsAgentTransitioning] = useState(false);
   const [showSaved, setShowSaved] = useState<string | null>(null);
+  const [showRecognizedBadge, setShowRecognizedBadge] = useState(false);
 
   const cameraViewRef = useRef<CameraViewRef>(null);
   const prevAgentRef = useRef(activeAgent);
@@ -87,6 +89,17 @@ export default function MainPage() {
   // 마운트 1회만
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 인식 배지 3초 후 자동 해제
+  useEffect(() => {
+    if (currentArtifact) {
+      setShowRecognizedBadge(true);
+      const timer = setTimeout(() => setShowRecognizedBadge(false), 3000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowRecognizedBadge(false);
+    }
+  }, [currentArtifact]);
 
   // ── Onboarding handlers ─────────────────────────────────
 
@@ -187,13 +200,12 @@ export default function MainPage() {
     }
   }, [diaryResult, router]);
 
-  // 복원 완료 시점에만 카메라 한 번 닫기 (이후 사용자가 다시 열 수 있음)
+  // 복원 완료 시에만 카메라 닫기
   useEffect(() => {
     if (restorationState.status === 'ready' && isCameraOpen) {
       setIsCameraOpen(false);
       toggleCamera(false);
     }
-    // isCameraOpen / toggleCamera 는 의도적으로 dep 제외 — status 전환 시 1회만 실행
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restorationState.status]);
 
@@ -311,7 +323,22 @@ export default function MainPage() {
               />
             </div>
           </div>
-          <AudioVisualizer state={audioState} />
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <AudioVisualizer state={audioState} />
+            </div>
+            {audioState === 'speaking' && (
+              <button
+                onClick={interrupt}
+                className="w-7 h-7 rounded-full bg-red-500/20 border border-red-500/30
+                           flex items-center justify-center hover:bg-red-500/30 transition-colors
+                           animate-fade-in shrink-0"
+                aria-label={t('session.stop')}
+              >
+                <Square className="w-3 h-3 text-red-400 fill-red-400" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -368,7 +395,7 @@ export default function MainPage() {
           <CameraView
             ref={cameraViewRef}
             isScanning={false}
-            isRecognized={!!currentArtifact}
+            isRecognized={showRecognizedBadge}
             isBlurred={false}
             onCapturePhoto={() => cameraViewRef.current?.capturePhoto() ?? ''}
           />

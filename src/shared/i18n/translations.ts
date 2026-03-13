@@ -264,6 +264,10 @@ const translations = {
     ko: '종료',
     en: 'Exit',
   },
+  'session.stop': {
+    ko: '멈춰',
+    en: 'Stop',
+  },
   'session.exitConfirm': {
     ko: '세션을 종료하시겠습니까?',
     en: 'End this session?',

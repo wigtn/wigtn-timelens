@@ -38,6 +38,7 @@ export class LiveSession {
   private userId = '';
   private visits: DiaryVisitInput[] = [];
   private lastCameraFrame: string | null = null;
+  private isInterrupted = false;
 
   constructor(events: LiveSessionEvents) {
     this.events = events;
@@ -101,6 +102,7 @@ export class LiveSession {
     this.ai = null;
     this.visits = [];
     this.lastCameraFrame = null;
+    this.isInterrupted = false;
     this.updateStatus('disconnected');
   }
 
@@ -162,6 +164,7 @@ export class LiveSession {
   }
 
   interrupt(): void {
+    this.isInterrupted = true;
     if (this.state.audioState === 'speaking') {
       this.updateAudioState('idle');
     }
@@ -221,6 +224,7 @@ export class LiveSession {
 
     // 3. 턴 완료 — 현재 트랜스크립트를 확정(isFinal)
     if (message.serverContent?.turnComplete) {
+      this.isInterrupted = false; // 인터럽트 플래그 리셋
       this.events.onTranscript({ text: '', delta: '', isFinal: true });
       this.updateAudioState('idle');
     }
@@ -520,6 +524,7 @@ export class LiveSession {
   // --- Helpers ---
 
   private handleAudioOutput(base64: string): void {
+    if (this.isInterrupted) return; // 인터럽트 중 — 오디오 드롭
     if (this.onAudioData) {
       this.onAudioData(base64);
     }

@@ -55,6 +55,24 @@ function toCivilization(value: string): Civilization {
   return VALID_CIVILIZATIONS.has(value) ? (value as Civilization) : 'Other';
 }
 
+/**
+ * "이건 뭐야?" 계열 키워드 감지.
+ * 카메라 열린 상태에서 이 패턴이 감지되면 자동 캡처 트리거.
+ */
+const WHAT_IS_THIS_PATTERNS = [
+  // Korean: "이거/이건/이게" + "뭐야/뭐지/뭔지/뭘까"
+  /이(?:거|건|게)\s*뭐/,
+  /뭐(?:야|지)\s*이(?:거|건|게)/,
+  /이(?:거|건|게)\s*(?:뭔|뭘)/,
+  // English
+  /what(?:'s| is) this/i,
+  /what(?:'s| is) that/i,
+];
+
+function isWhatIsThisQuery(text: string): boolean {
+  return WHAT_IS_THIS_PATTERNS.some((pattern) => pattern.test(text));
+}
+
 // ── 이벤트 핸들러 팩토리 ────────────────────────────────────
 
 interface SessionRefs {
@@ -65,6 +83,9 @@ interface SessionRefs {
   currentArtifact: React.RefObject<ArtifactSummary | null>;
   reconnect: React.RefObject<ReconnectManager | null>;
   geoCoords: React.RefObject<{ lat: number; lng: number }>;
+  cameraCapture: React.RefObject<CameraCapture | null>;
+  isCameraOpen: React.RefObject<boolean>;
+  lastAutoCaptureTime: React.RefObject<number>;
 }
 
 interface SessionSetters {
@@ -167,6 +188,19 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
     onUserSpeech: (data) => {
       const cleaned = cleanSttText(data.text);
       if (!cleaned) return;
+
+      // "이건 뭐야?" 감지 → 카메라 열려있으면 자동 캡처 (5초 쿨다운)
+      if (
+        refs.isCameraOpen.current &&
+        isWhatIsThisQuery(cleaned) &&
+        Date.now() - refs.lastAutoCaptureTime.current > 5000
+      ) {
+        const photo = refs.cameraCapture.current?.capturePhoto();
+        if (photo) {
+          refs.lastAutoCaptureTime.current = Date.now();
+          refs.liveSession.current?.sendPhoto(photo, cleaned);
+        }
+      }
 
       setters.setTranscript(prev => {
         const last = prev[prev.length - 1];
@@ -338,6 +372,8 @@ export function useLiveSession(): UseLiveSessionReturn {
   const currentArtifactRef = useRef<ArtifactSummary | null>(null);
   const userIdRef = useRef<string>('');
   const geoCoordsRef = useRef<{ lat: number; lng: number }>({ lat: 0, lng: 0 });
+  const isCameraOpenRef = useRef(false);
+  const lastAutoCaptureTimeRef = useRef(0);
 
   // 브라우저 Geolocation으로 좌표 추적
   useEffect(() => {
@@ -415,6 +451,9 @@ export function useLiveSession(): UseLiveSessionReturn {
         currentArtifact: currentArtifactRef,
         reconnect: reconnectRef,
         geoCoords: geoCoordsRef,
+        cameraCapture: cameraCaptureRef,
+        isCameraOpen: isCameraOpenRef,
+        lastAutoCaptureTime: lastAutoCaptureTimeRef,
       };
       const setters: SessionSetters = {
         setSessionState, setTranscript, setCurrentArtifact,
@@ -516,8 +555,8 @@ export function useLiveSession(): UseLiveSessionReturn {
   }, []);
 
   const toggleCamera = useCallback((enabled: boolean) => {
-    // 카메라 ON/OFF는 프리뷰만 제어 — 프레임 스트리밍 없음
-    // 인식은 캡처 버튼(sendPhoto)으로만 트리거
+    isCameraOpenRef.current = enabled;
+    // 카메라 ON/OFF는 프리뷰만 제어 — 인식은 캡처 버튼(sendPhoto)으로만 트리거
     if (!enabled) {
       cameraCaptureRef.current?.stopFrameLoop();
     }
