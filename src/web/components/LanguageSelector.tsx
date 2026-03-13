@@ -7,12 +7,12 @@
 import type { Locale } from '@shared/i18n';
 import { cn } from '@web/lib/utils';
 
-const LANGUAGES: { code: Locale; label: string; flag: string }[] = [
-  { code: 'ko', label: '한국어', flag: '🇰🇷' },
-  { code: 'en', label: 'English', flag: '🇺🇸' },
-  { code: 'ja', label: '日本語', flag: '🇯🇵' },
-  { code: 'zh', label: '中文', flag: '🇨🇳' },
-  { code: 'hi', label: 'हिन्दी', flag: '🇮🇳' },
+const LANGUAGES: { code: Locale; label: string }[] = [
+  { code: 'ko', label: '한국어' },
+  { code: 'en', label: 'English' },
+  { code: 'ja', label: '日本語' },
+  { code: 'zh', label: '中文' },
+  { code: 'hi', label: 'हिन्दी' },
 ];
 
 interface LanguageSelectorProps {
@@ -32,7 +32,7 @@ export default function LanguageSelector({ onSelect }: LanguageSelectorProps) {
         {/* Logo */}
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-timelens-gold/20 to-timelens-bronze/10
                         border border-timelens-gold/20 flex items-center justify-center">
-          <span className="text-2xl">🌐</span>
+          <span className="text-2xl">&#127760;</span>
         </div>
 
         <div className="flex flex-col items-center gap-2">
@@ -40,24 +40,23 @@ export default function LanguageSelector({ onSelect }: LanguageSelectorProps) {
             TimeLens
           </h1>
           <p className="text-sm text-gray-400 text-center">
-            Select your language / 언어를 선택하세요
+            Select your language
           </p>
         </div>
 
         {/* Language buttons */}
-        <div className="flex flex-col gap-3 w-full max-w-[280px]">
+        <div className="flex flex-wrap justify-center gap-2.5 w-full max-w-[320px]">
           {LANGUAGES.map((lang) => (
             <button
               key={lang.code}
               onClick={() => onSelect(lang.code)}
               className={cn(
-                'flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-200',
+                'px-5 py-3 rounded-2xl transition-all duration-200',
                 'glass border border-white/[0.08] hover:border-timelens-gold/30',
-                'active:scale-[0.98]',
+                'active:scale-[0.97]',
               )}
             >
-              <span className="text-2xl">{lang.flag}</span>
-              <span className="text-lg font-medium text-white">{lang.label}</span>
+              <span className="text-base font-medium text-white">{lang.label}</span>
             </button>
           ))}
         </div>

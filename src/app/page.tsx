@@ -10,7 +10,7 @@ import { useState, useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, Mic, Sparkles, Compass, BookOpen } from "lucide-react";
-import type { Locale } from "@shared/i18n";
+import { t, type Locale } from "@shared/i18n";
 
 const LANGUAGES: { code: Locale; label: string; flag: string; hint: string }[] =
   [
@@ -362,46 +362,33 @@ export default function LandingPage() {
             }}>
               {/* 언어 선택 */}
               <div className="mb-5">
-                <div className="flex gap-2.5">
-                  {LANGUAGES.map((lang) => (
-                    <button
-                      key={lang.code}
-                      onClick={() => setSelectedLang(lang.code)}
-                      className="flex-1 flex items-center justify-center gap-2 h-12 rounded-xl transition-all duration-250 active:scale-[0.97]"
-                      style={{
-                        background:
-                          selectedLang === lang.code
-                            ? "rgba(212,165,116,0.12)"
-                            : "rgba(255,255,255,0.03)",
-                        border:
-                          selectedLang === lang.code
+                <div className="flex flex-wrap justify-center gap-2">
+                  {LANGUAGES.map((lang) => {
+                    const active = selectedLang === lang.code;
+                    return (
+                      <button
+                        key={lang.code}
+                        onClick={() => setSelectedLang(lang.code)}
+                        className="px-4 h-10 rounded-full text-sm font-medium tracking-tight transition-all duration-200 active:scale-[0.95]"
+                        style={{
+                          background: active
+                            ? "rgba(212,165,116,0.15)"
+                            : "rgba(255,255,255,0.04)",
+                          border: active
                             ? "1.5px solid rgba(212,165,116,0.5)"
                             : "1px solid rgba(255,255,255,0.08)",
-                        boxShadow:
-                          selectedLang === lang.code
-                            ? "0 0 18px rgba(212,165,116,0.12)"
+                          boxShadow: active
+                            ? "0 0 14px rgba(212,165,116,0.12)"
                             : "none",
-                        color:
-                          selectedLang === lang.code
+                          color: active
                             ? "rgba(212,165,116,0.95)"
-                            : "rgba(255,255,255,0.35)",
-                      }}
-                    >
-                      <span className="text-lg leading-none">{lang.flag}</span>
-                      <span className="text-sm font-medium tracking-tight">
+                            : "rgba(255,255,255,0.4)",
+                        }}
+                      >
                         {lang.label}
-                      </span>
-                      {selectedLang === lang.code && (
-                        <span
-                          className="w-1.5 h-1.5 rounded-full"
-                          style={{
-                            background: "#D4A574",
-                            boxShadow: "0 0 6px rgba(212,165,116,0.8)",
-                          }}
-                        />
-                      )}
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -426,15 +413,15 @@ export default function LandingPage() {
                 {isStarting ? (
                   <span className="relative flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-black/20 border-t-black/50 rounded-full animate-spin" />
-                    {selectedLang === "en" ? "Starting..." : "시작 중..."}
+                    {selectedLang ? t("landing.ctaLoading", selectedLang) : "..."}
                   </span>
                 ) : selectedLang ? (
                   <span className="relative">
-                    {selectedLang === "en" ? "Start" : "시작하기"}
+                    {t("landing.cta", selectedLang)}
                   </span>
                 ) : (
                   <span className="relative" style={{ letterSpacing: "0.02em" }}>
-                    언어를 선택해 주세요
+                    Select Language
                   </span>
                 )}
               </button>
@@ -442,7 +429,7 @@ export default function LandingPage() {
               <div className="flex items-center justify-center gap-1.5 mt-4">
                 <Mic className="w-3 h-3 text-gray-700" />
                 <p className="text-[12px] text-gray-600">
-                  카메라와 마이크 권한이 필요합니다
+                  {selectedLang ? t("landing.permissionNote", selectedLang) : "Camera & microphone required"}
                 </p>
               </div>
             </div>
