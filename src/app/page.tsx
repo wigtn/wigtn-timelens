@@ -16,6 +16,9 @@ const LANGUAGES: { code: Locale; label: string; flag: string; hint: string }[] =
   [
     { code: "ko", label: "한국어", flag: "🇰🇷", hint: "Korean" },
     { code: "en", label: "English", flag: "🇺🇸", hint: "영어" },
+    { code: "ja", label: "日本語", flag: "🇯🇵", hint: "Japanese" },
+    { code: "zh", label: "中文", flag: "🇨🇳", hint: "Chinese" },
+    { code: "hi", label: "हिन्दी", flag: "🇮🇳", hint: "Hindi" },
   ];
 
 const ARTIFACTS = [
