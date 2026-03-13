@@ -47,6 +47,7 @@ export default function MainPage() {
     diaryResult,
     beforeImage,
     clearToolResult,
+    capturePhotoRef,
   } = useLiveSession();
 
   const router = useRouter();
@@ -59,7 +60,7 @@ export default function MainPage() {
 
   // Onboarding flow state
   const [languageSelected, setLanguageSelected] = useState(() => {
-    return langParam === 'ko' || langParam === 'en';
+    return langParam != null && ['ko', 'en', 'ja', 'zh', 'hi'].includes(langParam);
   });
   // localStorage 캐시로 이전에 허용한 경우 즉시 스킵
   const [permissionsGranted, setPermissionsGranted] = useState(() =>
@@ -83,12 +84,18 @@ export default function MainPage() {
 
   // 랜딩에서 전달된 언어 파라미터 적용
   useEffect(() => {
-    if (langParam === 'ko' || langParam === 'en') {
+    if (langParam && ['ko', 'en', 'ja', 'zh', 'hi'].includes(langParam)) {
       setLocale(langParam);
     }
   // 마운트 1회만
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // CameraView의 capturePhoto를 useLiveSession에 연결 (음성 자동 캡처용)
+  useEffect(() => {
+    capturePhotoRef.current = () => cameraViewRef.current?.capturePhoto() ?? null;
+    return () => { capturePhotoRef.current = null; };
+  }, [capturePhotoRef]);
 
   // 인식 배지 3초 후 자동 해제
   useEffect(() => {
@@ -288,7 +295,7 @@ export default function MainPage() {
   // ── Main session UI ─────────────────────────────────────
 
   return (
-    <div className="relative flex flex-col w-full h-full bg-gray-950">
+    <div className="relative flex flex-col w-full max-w-sm mx-auto h-full bg-gray-950">
       {/* Onboarding splash */}
       {museumSelected && !splashDone && (
         <OnboardingSplash

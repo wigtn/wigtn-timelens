@@ -42,6 +42,9 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     if (typeof window !== 'undefined') {
       const lang = navigator.language;
       if (lang.startsWith('ko')) return 'ko';
+      if (lang.startsWith('ja')) return 'ja';
+      if (lang.startsWith('zh')) return 'zh';
+      if (lang.startsWith('hi')) return 'hi';
     }
     return 'en';
   }

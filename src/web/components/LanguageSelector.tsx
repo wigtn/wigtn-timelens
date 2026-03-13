@@ -10,6 +10,9 @@ import { cn } from '@web/lib/utils';
 const LANGUAGES: { code: Locale; label: string; flag: string }[] = [
   { code: 'ko', label: '한국어', flag: '🇰🇷' },
   { code: 'en', label: 'English', flag: '🇺🇸' },
+  { code: 'ja', label: '日本語', flag: '🇯🇵' },
+  { code: 'zh', label: '中文', flag: '🇨🇳' },
+  { code: 'hi', label: 'हिन्दी', flag: '🇮🇳' },
 ];
 
 interface LanguageSelectorProps {

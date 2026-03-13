@@ -146,6 +146,8 @@ export interface UseLiveSessionReturn {
   clearToolResult: () => void;
   /** 인식 시점 카메라 캡처 (data:image/jpeg;base64,...) */
   beforeImage: string | null;
+  /** UI 카메라 캡처 함수 ref — CameraView 연결용 (auto-capture) */
+  capturePhotoRef: React.RefObject<(() => string | null) | null>;
 }
 
 export interface TranscriptChunk {

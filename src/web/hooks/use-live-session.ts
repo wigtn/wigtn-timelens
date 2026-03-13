@@ -67,6 +67,12 @@ const WHAT_IS_THIS_PATTERNS = [
   // English
   /what(?:'s| is) this/i,
   /what(?:'s| is) that/i,
+  // Japanese: "これは何" "これ何"
+  /これ(?:は)?(?:何|なに|なん)/,
+  // Chinese: "这是什么" "这个是什么"
+  /这(?:个)?是什么/,
+  // Hindi: "यह क्या है" "ये क्या है"
+  /(?:यह|ये)\s*क्या/,
 ];
 
 function isWhatIsThisQuery(text: string): boolean {
@@ -83,7 +89,7 @@ interface SessionRefs {
   currentArtifact: React.RefObject<ArtifactSummary | null>;
   reconnect: React.RefObject<ReconnectManager | null>;
   geoCoords: React.RefObject<{ lat: number; lng: number }>;
-  cameraCapture: React.RefObject<CameraCapture | null>;
+  capturePhoto: React.RefObject<(() => string | null) | null>;
   isCameraOpen: React.RefObject<boolean>;
   lastAutoCaptureTime: React.RefObject<number>;
 }
@@ -195,7 +201,7 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
         isWhatIsThisQuery(cleaned) &&
         Date.now() - refs.lastAutoCaptureTime.current > 5000
       ) {
-        const photo = refs.cameraCapture.current?.capturePhoto();
+        const photo = refs.capturePhoto.current?.();
         if (photo) {
           refs.lastAutoCaptureTime.current = Date.now();
           refs.liveSession.current?.sendPhoto(photo, cleaned);
@@ -374,6 +380,7 @@ export function useLiveSession(): UseLiveSessionReturn {
   const geoCoordsRef = useRef<{ lat: number; lng: number }>({ lat: 0, lng: 0 });
   const isCameraOpenRef = useRef(false);
   const lastAutoCaptureTimeRef = useRef(0);
+  const capturePhotoRef = useRef<(() => string | null) | null>(null);
 
   // 브라우저 Geolocation으로 좌표 추적
   useEffect(() => {
@@ -451,7 +458,7 @@ export function useLiveSession(): UseLiveSessionReturn {
         currentArtifact: currentArtifactRef,
         reconnect: reconnectRef,
         geoCoords: geoCoordsRef,
-        cameraCapture: cameraCaptureRef,
+        capturePhoto: capturePhotoRef,
         isCameraOpen: isCameraOpenRef,
         lastAutoCaptureTime: lastAutoCaptureTimeRef,
       };
@@ -613,5 +620,6 @@ export function useLiveSession(): UseLiveSessionReturn {
     currentArtifact, transcript, audioState, activeAgent,
     toolResult, restorationState, discoverySites, diaryResult, clearToolResult,
     beforeImage,
+    capturePhotoRef,
   };
 }
