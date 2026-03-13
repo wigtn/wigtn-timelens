@@ -13,6 +13,7 @@ import { MapPin, Clock, Star, Navigation } from 'lucide-react';
 import { cn } from '@web/lib/utils';
 import { formatDistance } from '@back/lib/geo/places';
 import type { NearbyPlace } from '@shared/types/discovery';
+import { useT } from '@web/lib/i18n';
 
 export interface NearbyCardProps {
   place: NearbyPlace;
@@ -21,6 +22,7 @@ export interface NearbyCardProps {
 }
 
 const NearbyCard = memo(function NearbyCard({ place, index, onTap }: NearbyCardProps) {
+  const { t } = useT();
   const handleTap = useCallback(() => {
     if (onTap) {
       onTap(place);
@@ -76,7 +78,7 @@ const NearbyCard = memo(function NearbyCard({ place, index, onTap }: NearbyCardP
           </span>
           <span className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            {place.walkingTime}분
+            {place.walkingTime}{t('nearby.minutes')}
           </span>
           {place.rating && (
             <span className="flex items-center gap-1">
@@ -95,7 +97,7 @@ const NearbyCard = memo(function NearbyCard({ place, index, onTap }: NearbyCardP
                 : 'bg-red-500/20 text-red-300'
             )}
           >
-            {place.isOpen ? '영업 중' : '영업 종료'}
+            {place.isOpen ? t('museum.open') : t('museum.closed')}
           </span>
         )}
       </div>

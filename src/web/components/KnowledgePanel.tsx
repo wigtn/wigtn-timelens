@@ -14,6 +14,7 @@ import type { PanelState } from '@shared/types/common';
 import type { ArtifactSummary } from '@shared/types/live-session';
 import TopicChip from './TopicChip';
 import TranscriptChat from './TranscriptChat';
+import { useT } from '@web/lib/i18n';
 
 function getPanelHeight(state: PanelState): string {
   switch (state) {
@@ -63,6 +64,7 @@ export default function KnowledgePanel({
   audioState,
   children,
 }: KnowledgePanelProps) {
+  const { t } = useT();
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchDelta, setTouchDelta] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -149,7 +151,7 @@ export default function KnowledgePanel({
                   onClick={handleExpandClick}
                   className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center
                              hover:bg-white/20 transition-colors"
-                  aria-label="패널 확장"
+                  aria-label={t('panel.expand')}
                 >
                   <ChevronUp className="w-4 h-4 text-gray-400" />
                 </button>
@@ -159,7 +161,7 @@ export default function KnowledgePanel({
                   onClick={handleCollapseClick}
                   className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center
                              hover:bg-white/20 transition-colors"
-                  aria-label="패널 축소"
+                  aria-label={t('panel.collapse')}
                 >
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 </button>
@@ -173,7 +175,7 @@ export default function KnowledgePanel({
               onClick={() => onStateChange('expanded')}
               className="absolute right-3 top-2 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center
                          hover:bg-white/20 transition-colors"
-              aria-label="전체화면 닫기"
+              aria-label={t('panel.closeFullscreen')}
             >
               <X className="w-4 h-4 text-gray-400" />
             </button>
@@ -199,7 +201,7 @@ export default function KnowledgePanel({
             {/* Mini: last transcript preview */}
             {state === 'mini' && lastTranscript && (
               <p className="text-xs text-gray-400 mt-2 truncate">
-                {lastTranscript.role === 'user' ? '나: ' : 'AI: '}
+                {lastTranscript.role === 'user' ? `${t('panel.you')}: ` : 'AI: '}
                 {lastTranscript.text}
               </p>
             )}

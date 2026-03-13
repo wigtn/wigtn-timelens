@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { BeforeAfterSliderProps } from '@shared/types/components';
+import { useT } from '@web/lib/i18n';
 
 export function BeforeAfterSlider({
   beforeImage,
@@ -18,6 +19,7 @@ export function BeforeAfterSlider({
   onSave,
   onShare,
 }: BeforeAfterSliderProps) {
+  const { t } = useT();
   const containerRef = useRef<HTMLDivElement>(null);
   const [sliderPosition, setSliderPosition] = useState(50);
   const isDraggingRef = useRef(false);
@@ -183,7 +185,7 @@ export function BeforeAfterSlider({
         {/* 라벨 */}
         {beforeImage && (
           <div className="absolute top-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded z-20 pointer-events-none">
-            Now
+            {t('restoration.now')}
           </div>
         )}
         <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded z-20 pointer-events-none">
@@ -227,7 +229,7 @@ export function BeforeAfterSlider({
             <polyline points="17 21 17 13 7 13 7 21" />
             <polyline points="7 3 7 8 15 8" />
           </svg>
-          Save
+          {t('session.save')}
         </button>
         <button
           onClick={onShare}
@@ -249,7 +251,7 @@ export function BeforeAfterSlider({
             <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
             <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
           </svg>
-          Share
+          {t('restoration.share')}
         </button>
       </div>
     </div>

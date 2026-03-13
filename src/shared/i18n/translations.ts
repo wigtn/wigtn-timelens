@@ -340,6 +340,76 @@ const translations = {
     ko: '현재',
     en: 'Now',
   },
+  'restoration.restoringTo': {
+    ko: '복원 중:',
+    en: 'Restoring to',
+  },
+  'restoration.retry': {
+    ko: '다시 시도',
+    en: 'Try again',
+  },
+  'restoration.restored': {
+    ko: '복원됨:',
+    en: 'Restored:',
+  },
+  'restoration.share': {
+    ko: '공유',
+    en: 'Share',
+  },
+
+  // ── Camera ──────────────────────────────────────────────────
+  'camera.unavailable': {
+    ko: '카메라를 사용할 수 없습니다',
+    en: 'Camera is not available',
+  },
+
+  // ── Audio ───────────────────────────────────────────────────
+  'audio.generating': {
+    ko: '생성 중',
+    en: 'Generating',
+  },
+
+  // ── Error Boundary ──────────────────────────────────────────
+  'error.title': {
+    ko: '문제가 발생했습니다',
+    en: 'Something went wrong',
+  },
+  'error.unknown': {
+    ko: '알 수 없는 오류가 발생했습니다',
+    en: 'An unknown error occurred',
+  },
+  'error.retry': {
+    ko: '다시 시도',
+    en: 'Try Again',
+  },
+  'error.refresh': {
+    ko: '페이지 새로고침',
+    en: 'Refresh Page',
+  },
+
+  // ── Nearby Card ─────────────────────────────────────────────
+  'nearby.minutes': {
+    ko: '분',
+    en: 'min',
+  },
+
+  // ── Knowledge Panel ─────────────────────────────────────────
+  'panel.expand': {
+    ko: '패널 확장',
+    en: 'Expand panel',
+  },
+  'panel.collapse': {
+    ko: '패널 축소',
+    en: 'Collapse panel',
+  },
+  'panel.closeFullscreen': {
+    ko: '전체화면 닫기',
+    en: 'Close fullscreen',
+  },
+  'panel.you': {
+    ko: '나',
+    en: 'You',
+  },
 } as const;
 
 export type TranslationKey = keyof typeof translations;

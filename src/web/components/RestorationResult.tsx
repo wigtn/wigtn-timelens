@@ -9,6 +9,7 @@
 import { useState, useEffect } from 'react';
 import type { RestorationUIState } from '@shared/types/restoration';
 import { BeforeAfterSlider } from '@web/components/BeforeAfterSlider';
+import { useT } from '@web/lib/i18n';
 
 export interface RestorationResultProps {
   state: RestorationUIState;
@@ -25,6 +26,7 @@ export function RestorationResult({
   onShare,
   onClose,
 }: RestorationResultProps) {
+  const { t } = useT();
   // --- 로딩 프로그레스 시뮬레이션 ---
   const [simulatedProgress, setSimulatedProgress] = useState(0);
 
@@ -84,7 +86,7 @@ export function RestorationResult({
 
         {/* 복원 시대 표시 */}
         <p className="text-center text-sm text-gray-300 mb-3">
-          Restoring to{' '}
+          {t('restoration.restoringTo')}{' '}
           <span className="text-amber-400 font-semibold">{state.era}</span>
           ...
         </p>
@@ -110,7 +112,7 @@ export function RestorationResult({
     return (
       <div className="bg-red-900/30 border border-red-500/50 rounded-xl p-6 text-center">
         <p className="text-red-400 font-semibold mb-2">
-          Restoration failed
+          {t('restoration.failed')}
         </p>
         <p className="text-sm text-gray-400 mb-4">{state.error}</p>
         {state.retryable && onRetry && (
@@ -118,7 +120,7 @@ export function RestorationResult({
             onClick={onRetry}
             className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm"
           >
-            Try again
+            {t('restoration.retry')}
           </button>
         )}
       </div>
@@ -138,7 +140,7 @@ export function RestorationResult({
             {state.data.artifactName}
           </h3>
           <p className="text-sm text-gray-300">
-            Restored: {state.data.era}
+            {t('restoration.restored')} {state.data.era}
           </p>
         </div>
         {onClose && (

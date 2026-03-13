@@ -9,6 +9,7 @@
 import { useRef, useEffect } from 'react';
 import type { AudioVisualizerProps } from '@shared/types/components';
 import type { AudioState } from '@shared/types/common';
+import { useT } from '@web/lib/i18n';
 
 const BAR_COUNT = 24;
 
@@ -41,6 +42,7 @@ function getBarColor(state: AudioState): string {
 }
 
 export default function AudioVisualizer({ state, audioLevel = 0 }: AudioVisualizerProps) {
+  const { t } = useT();
   const containerRef = useRef<HTMLDivElement>(null);
   const animFrameRef = useRef<number>(0);
 
@@ -74,7 +76,7 @@ export default function AudioVisualizer({ state, audioLevel = 0 }: AudioVisualiz
     return (
       <div className="flex items-center justify-center h-6 gap-2">
         <div className="w-4 h-4 border-2 border-timelens-gold/40 border-t-timelens-gold rounded-full animate-spin" />
-        <span className="text-[10px] text-gray-500 tracking-wide">생성 중</span>
+        <span className="text-[10px] text-gray-500 tracking-wide">{t('audio.generating')}</span>
       </div>
     );
   }

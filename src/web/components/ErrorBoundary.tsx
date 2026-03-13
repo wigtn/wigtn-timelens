@@ -8,6 +8,7 @@
 'use client';
 
 import { Component, type ReactNode, type ErrorInfo } from 'react';
+import { t, type Locale } from '@shared/i18n';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -37,9 +38,19 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     this.setState({ hasError: false, error: null });
   };
 
+  private getLocale(): Locale {
+    if (typeof window !== 'undefined') {
+      const lang = navigator.language;
+      if (lang.startsWith('ko')) return 'ko';
+    }
+    return 'en';
+  }
+
   render(): ReactNode {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
+
+      const locale = this.getLocale();
 
       return (
         <div className="fixed inset-0 bg-black flex flex-col items-center justify-center px-8">
@@ -50,25 +61,25 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
           </div>
 
           <h2 className="text-xl font-heading font-bold text-white text-center">
-            문제가 발생했습니다
+            {t('error.title', locale)}
           </h2>
 
           <p className="text-gray-400 text-center mt-3 text-sm">
-            {this.state.error?.message || '알 수 없는 오류가 발생했습니다'}
+            {this.state.error?.message || t('error.unknown', locale)}
           </p>
 
           <button
             onClick={this.handleRetry}
             className="mt-8 px-8 py-3 bg-white text-black rounded-full font-medium"
           >
-            다시 시도
+            {t('error.retry', locale)}
           </button>
 
           <button
             onClick={() => window.location.reload()}
             className="mt-3 px-8 py-3 text-gray-400 text-sm"
           >
-            페이지 새로고침
+            {t('error.refresh', locale)}
           </button>
         </div>
       );

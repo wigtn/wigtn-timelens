@@ -12,6 +12,7 @@ import { Check } from 'lucide-react';
 import { cn } from '@web/lib/utils';
 import type { CameraViewProps } from '@shared/types/components';
 import { useCamera } from '@web/hooks/use-camera';
+import { useT } from '@web/lib/i18n';
 
 export interface CameraViewRef {
   capturePhoto: () => string;
@@ -52,6 +53,7 @@ const CameraView = forwardRef<CameraViewRef, CameraViewProps>(function CameraVie
   { isScanning, isRecognized, isBlurred },
   ref
 ) {
+  const { t } = useT();
   const { stream, isActive, error, startCamera, capturePhoto: capPhoto } = useCamera();
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -96,7 +98,7 @@ const CameraView = forwardRef<CameraViewRef, CameraViewProps>(function CameraVie
               <div className="w-2 h-2 rounded-full bg-gray-600" />
             </div>
           </div>
-          <p className="text-gray-300 text-center font-medium">카메라를 사용할 수 없습니다</p>
+          <p className="text-gray-300 text-center font-medium">{t('camera.unavailable')}</p>
           <p className="text-gray-500 text-sm text-center mt-2 px-8 leading-relaxed">{error}</p>
         </div>
       )}
