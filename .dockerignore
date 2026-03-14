@@ -1,0 +1,41 @@
+# Dependencies (deps 스테이지에서 별도 설치)
+node_modules
+
+# Git
+.git
+.gitignore
+
+# Build artifacts
+.next
+out
+dist
+
+# Mobile app (웹 빌드에 불필요)
+mobile
+
+# Documentation
+docs
+*.md
+
+# IDE / OS
+.vscode
+.idea
+.DS_Store
+
+# Environment (빌드 시 --build-arg로 전달)
+.env
+.env.*
+
+# CI/CD configs
+.github
+cloudbuild.yaml
+
+# Firebase rules (런타임 불필요)
+firestore.rules
+storage.rules
+firebase.json
+.firebaserc
+
+# Claude / dev tools
+.claude
+PROGRESS.md
