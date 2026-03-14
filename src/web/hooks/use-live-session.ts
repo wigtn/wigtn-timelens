@@ -35,7 +35,8 @@ import type { AudioState, AgentType, Civilization } from '@shared/types/common';
  * - 한글 뒤 공백 + 1음절 한글 패턴 병합 (예: "큐레 이터" → "큐레이터")
  * - 연속 공백 축소
  */
-function cleanSttText(text: string): string {
+/** 테스트 가능하도록 export — 한국어 STT 텍스트 후처리 */
+export function cleanSttText(text: string): string {
   return text
     // 구두점 앞 공백 제거
     .replace(/\s+([.,!?])/g, '$1')
@@ -64,18 +65,28 @@ const WHAT_IS_THIS_PATTERNS = [
   /이(?:거|건|게)\s*뭐/,
   /뭐(?:야|지)\s*이(?:거|건|게)/,
   /이(?:거|건|게)\s*(?:뭔|뭘)/,
+  // Korean: "이거 봐봐", "이것 좀 봐", "이거 봐", "한번 봐봐"
+  /이(?:거|것|게)\s*(?:좀\s*)?봐/,
+  /(?:한번|좀)\s*봐/,
+  // Korean: "이거 알아?", "이거 뭔지 알아?"
+  /이(?:거|건|게)\s*(?:뭔지\s*)?알/,
   // English
   /what(?:'s| is) this/i,
   /what(?:'s| is) that/i,
-  // Japanese: "これは何" "これ何"
+  /look at this/i,
+  /check this out/i,
+  // Japanese: "これは何" "これ何" "これ見て"
   /これ(?:は)?(?:何|なに|なん)/,
-  // Chinese: "这是什么" "这个是什么"
+  /これ\s*見て/,
+  // Chinese: "这是什么" "这个是什么" "你看这个"
   /这(?:个)?是什么/,
+  /你看这/,
   // Hindi: "यह क्या है" "ये क्या है"
   /(?:यह|ये)\s*क्या/,
 ];
 
-function isWhatIsThisQuery(text: string): boolean {
+/** 테스트 가능하도록 export — "이거 봐봐", "what is this" 등 감지 */
+export function isWhatIsThisQuery(text: string): boolean {
   return WHAT_IS_THIS_PATTERNS.some((pattern) => pattern.test(text));
 }
 
@@ -91,6 +102,8 @@ interface SessionRefs {
   geoCoords: React.RefObject<{ lat: number; lng: number }>;
   capturePhoto: React.RefObject<(() => string | null) | null>;
   onCaptureFlash: React.RefObject<(() => void) | null>;
+  /** 카메라 닫혀있을 때 자동으로 열고 캡처하는 콜백 (음성 트리거용) */
+  openCameraAndCapture: React.RefObject<((prompt: string) => void) | null>;
   isCameraOpen: React.RefObject<boolean>;
   lastAutoCaptureTime: React.RefObject<number>;
 }
@@ -196,17 +209,23 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
       const cleaned = cleanSttText(data.text);
       if (!cleaned) return;
 
-      // "이건 뭐야?" 감지 → 카메라 열려있으면 자동 캡처 (5초 쿨다운)
+      // "이거 봐봐" / "이건 뭐야?" 감지 → 자동 캡처 (5초 쿨다운)
       if (
-        refs.isCameraOpen.current &&
         isWhatIsThisQuery(cleaned) &&
         Date.now() - refs.lastAutoCaptureTime.current > 5000
       ) {
-        const photo = refs.capturePhoto.current?.();
-        if (photo) {
+        if (refs.isCameraOpen.current) {
+          // 카메라 이미 열림 → 즉시 캡처
+          const photo = refs.capturePhoto.current?.();
+          if (photo) {
+            refs.lastAutoCaptureTime.current = Date.now();
+            refs.onCaptureFlash.current?.();
+            refs.liveSession.current?.sendPhoto(photo, cleaned);
+          }
+        } else {
+          // 카메라 닫힘 → 자동으로 열고 캡처
           refs.lastAutoCaptureTime.current = Date.now();
-          refs.onCaptureFlash.current?.();
-          refs.liveSession.current?.sendPhoto(photo, cleaned);
+          refs.openCameraAndCapture.current?.(cleaned);
         }
       }
 
@@ -380,10 +399,12 @@ export function useLiveSession(): UseLiveSessionReturn {
   const currentArtifactRef = useRef<ArtifactSummary | null>(null);
   const userIdRef = useRef<string>('');
   const geoCoordsRef = useRef<{ lat: number; lng: number }>({ lat: 0, lng: 0 });
+  // ── Camera auto-capture refs (UI 콜백 브릿지) ──
   const isCameraOpenRef = useRef(false);
   const lastAutoCaptureTimeRef = useRef(0);
   const capturePhotoRef = useRef<(() => string | null) | null>(null);
   const onCaptureFlashRef = useRef<(() => void) | null>(null);
+  const openCameraAndCaptureRef = useRef<((prompt: string) => void) | null>(null);
 
   // 브라우저 Geolocation으로 좌표 추적
   useEffect(() => {
@@ -463,6 +484,7 @@ export function useLiveSession(): UseLiveSessionReturn {
         geoCoords: geoCoordsRef,
         capturePhoto: capturePhotoRef,
         onCaptureFlash: onCaptureFlashRef,
+        openCameraAndCapture: openCameraAndCaptureRef,
         isCameraOpen: isCameraOpenRef,
         lastAutoCaptureTime: lastAutoCaptureTimeRef,
       };
@@ -590,8 +612,8 @@ export function useLiveSession(): UseLiveSessionReturn {
     ]);
   }, []);
 
-  const sendPhoto = useCallback((imageBase64: string) => {
-    liveSessionRef.current?.sendPhoto(imageBase64);
+  const sendPhoto = useCallback((imageBase64: string, prompt?: string) => {
+    liveSessionRef.current?.sendPhoto(imageBase64, prompt);
   }, []);
 
   const clearToolResult = useCallback(() => {
@@ -626,5 +648,6 @@ export function useLiveSession(): UseLiveSessionReturn {
     beforeImage,
     capturePhotoRef,
     onCaptureFlashRef,
+    openCameraAndCaptureRef,
   };
 }

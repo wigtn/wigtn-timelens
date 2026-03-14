@@ -86,7 +86,7 @@ export interface LiveSessionControls {
   interrupt: () => void;
   requestTopicDetail: (topicId: string, topicLabel: string) => void;
   sendTextMessage: (text: string) => void;
-  sendPhoto: (imageBase64: string) => void;
+  sendPhoto: (imageBase64: string, prompt?: string) => void;
   getSessionState: () => SessionState;
 }
 
@@ -133,7 +133,7 @@ export interface UseLiveSessionReturn {
   interrupt: () => void;
   requestTopicDetail: (topicId: string, topicLabel: string) => void;
   sendTextMessage: (text: string) => void;
-  sendPhoto: (imageBase64: string) => void;
+  sendPhoto: (imageBase64: string, prompt?: string) => void;
   currentArtifact: ArtifactSummary | null;
   transcript: TranscriptChunk[];
   audioState: AudioState;
@@ -150,6 +150,8 @@ export interface UseLiveSessionReturn {
   capturePhotoRef: React.RefObject<(() => string | null) | null>;
   /** 캡처 시 셔터 플래시 콜백 ref — auto-capture에서도 시각 피드백 제공 */
   onCaptureFlashRef: React.RefObject<(() => void) | null>;
+  /** 카메라 닫혀있을 때 자동으로 열고 캡처하는 콜백 ref (음성 트리거) */
+  openCameraAndCaptureRef: React.RefObject<((prompt: string) => void) | null>;
 }
 
 export interface TranscriptChunk {

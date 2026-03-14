@@ -27,6 +27,9 @@ import NearbySites from '@web/components/NearbySites';
 import TopicChip from '@web/components/TopicChip';
 import LanguageSelector from '@web/components/LanguageSelector';
 
+/** 카메라 자동 오픈 후 스트림 안정화 대기 시간 (ms) */
+const CAMERA_STABILIZATION_MS = 500;
+
 export default function MainPage() {
   const {
     isConnected,
@@ -49,6 +52,7 @@ export default function MainPage() {
     clearToolResult,
     capturePhotoRef,
     onCaptureFlashRef,
+    openCameraAndCaptureRef,
   } = useLiveSession();
 
   const router = useRouter();
@@ -83,6 +87,8 @@ export default function MainPage() {
 
   const cameraViewRef = useRef<CameraViewRef>(null);
   const prevAgentRef = useRef(activeAgent);
+  /** 음성 트리거로 카메라 열릴 때 보낼 프롬프트 (캡처 대기용) */
+  const pendingCapturePromptRef = useRef<string | null>(null);
 
   // 랜딩에서 전달된 언어 파라미터 적용
   useEffect(() => {
@@ -115,6 +121,32 @@ export default function MainPage() {
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     };
   }, [onCaptureFlashRef, triggerCaptureFlash]);
+
+  // 음성 트리거로 카메라 자동 오픈 + 캡처 콜백 연결
+  useEffect(() => {
+    openCameraAndCaptureRef.current = (prompt: string) => {
+      pendingCapturePromptRef.current = prompt;
+      setIsCameraOpen(true);
+      toggleCamera(true);
+    };
+    return () => { openCameraAndCaptureRef.current = null; };
+  }, [openCameraAndCaptureRef, toggleCamera]);
+
+  // 카메라가 열리고 pendingCapture가 있으면 → 안정화 후 자동 캡처
+  // Note: sendPhoto/triggerCaptureFlash는 useCallback으로 안정적이므로 재트리거하지 않음
+  useEffect(() => {
+    if (!isCameraOpen || !pendingCapturePromptRef.current) return;
+    const prompt = pendingCapturePromptRef.current;
+    pendingCapturePromptRef.current = null;
+    const timer = setTimeout(() => {
+      const photo = cameraViewRef.current?.capturePhoto();
+      if (photo) {
+        triggerCaptureFlash();
+        sendPhoto(photo, prompt);
+      }
+    }, CAMERA_STABILIZATION_MS);
+    return () => clearTimeout(timer);
+  }, [isCameraOpen, sendPhoto, triggerCaptureFlash]);
 
   // 인식 배지 3초 후 자동 해제
   useEffect(() => {
