@@ -24,6 +24,24 @@ function sanitizeTranscript(text: string): string {
   return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim();
 }
 
+/**
+ * AI 출력 트랜스크립션 후처리 — 구두점 뒤 공백 보정.
+ * Native audio 모델의 outputTranscription은 한국어 등에서
+ * 띄어쓰기가 누락되는 경우가 많다.
+ *
+ * Known trade-offs:
+ * - "B.C." → "B. C." (abbreviations get extra space — rare in transcript context)
+ * - URLs like "example.com" → "example. com" (not expected in voice transcripts)
+ */
+export function cleanOutputTranscript(text: string): string {
+  return sanitizeTranscript(text)
+    // 구두점(. ? ! ,) 뒤에 공백 없이 문자가 오면 공백 삽입
+    // 숫자·따옴표·다른 구두점 앞에서는 삽입하지 않음
+    .replace(/([.?!,])(?=[^\s.?!,\d'"])/g, '$1 ')
+    // 연속 공백 축소
+    .replace(/\s{2,}/g, ' ');
+}
+
 export interface LiveSessionConfig {
   token: string;
   language: string;
@@ -276,7 +294,7 @@ export class LiveSession {
     // 8. 출력 트랜스크립션 (AI 음성 텍스트) — serverContent 하위
     const outputTx = message.serverContent?.outputTranscription;
     if (outputTx?.text) {
-      const cleaned = sanitizeTranscript(outputTx.text);
+      const cleaned = cleanOutputTranscript(outputTx.text);
       if (cleaned) {
         this.events.onTranscript({
           text: cleaned,
