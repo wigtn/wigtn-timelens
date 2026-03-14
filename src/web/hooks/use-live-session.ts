@@ -90,6 +90,7 @@ interface SessionRefs {
   reconnect: React.RefObject<ReconnectManager | null>;
   geoCoords: React.RefObject<{ lat: number; lng: number }>;
   capturePhoto: React.RefObject<(() => string | null) | null>;
+  onCaptureFlash: React.RefObject<(() => void) | null>;
   isCameraOpen: React.RefObject<boolean>;
   lastAutoCaptureTime: React.RefObject<number>;
 }
@@ -204,6 +205,7 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
         const photo = refs.capturePhoto.current?.();
         if (photo) {
           refs.lastAutoCaptureTime.current = Date.now();
+          refs.onCaptureFlash.current?.();
           refs.liveSession.current?.sendPhoto(photo, cleaned);
         }
       }
@@ -381,6 +383,7 @@ export function useLiveSession(): UseLiveSessionReturn {
   const isCameraOpenRef = useRef(false);
   const lastAutoCaptureTimeRef = useRef(0);
   const capturePhotoRef = useRef<(() => string | null) | null>(null);
+  const onCaptureFlashRef = useRef<(() => void) | null>(null);
 
   // 브라우저 Geolocation으로 좌표 추적
   useEffect(() => {
@@ -459,6 +462,7 @@ export function useLiveSession(): UseLiveSessionReturn {
         reconnect: reconnectRef,
         geoCoords: geoCoordsRef,
         capturePhoto: capturePhotoRef,
+        onCaptureFlash: onCaptureFlashRef,
         isCameraOpen: isCameraOpenRef,
         lastAutoCaptureTime: lastAutoCaptureTimeRef,
       };
@@ -621,5 +625,6 @@ export function useLiveSession(): UseLiveSessionReturn {
     toolResult, restorationState, discoverySites, diaryResult, clearToolResult,
     beforeImage,
     capturePhotoRef,
+    onCaptureFlashRef,
   };
 }

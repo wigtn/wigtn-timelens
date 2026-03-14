@@ -48,6 +48,7 @@ export default function MainPage() {
     beforeImage,
     clearToolResult,
     capturePhotoRef,
+    onCaptureFlashRef,
   } = useLiveSession();
 
   const router = useRouter();
@@ -78,6 +79,7 @@ export default function MainPage() {
   const [isAgentTransitioning, setIsAgentTransitioning] = useState(false);
   const [showSaved, setShowSaved] = useState<string | null>(null);
   const [showRecognizedBadge, setShowRecognizedBadge] = useState(false);
+  const [showCaptureFlash, setShowCaptureFlash] = useState(false);
 
   const cameraViewRef = useRef<CameraViewRef>(null);
   const prevAgentRef = useRef(activeAgent);
@@ -96,6 +98,23 @@ export default function MainPage() {
     capturePhotoRef.current = () => cameraViewRef.current?.capturePhoto() ?? null;
     return () => { capturePhotoRef.current = null; };
   }, [capturePhotoRef]);
+
+  // 셔터 플래시 트리거 (수동 캡처 + 음성 자동 캡처 공용)
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const triggerCaptureFlash = useCallback(() => {
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    setShowCaptureFlash(true);
+    flashTimerRef.current = setTimeout(() => setShowCaptureFlash(false), 200);
+  }, []);
+
+  // 음성 자동 캡처 시 플래시 콜백 연결 + 언마운트 cleanup
+  useEffect(() => {
+    onCaptureFlashRef.current = triggerCaptureFlash;
+    return () => {
+      onCaptureFlashRef.current = null;
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    };
+  }, [onCaptureFlashRef, triggerCaptureFlash]);
 
   // 인식 배지 3초 후 자동 해제
   useEffect(() => {
@@ -233,8 +252,9 @@ export default function MainPage() {
   const handleCapture = useCallback(() => {
     const photo = cameraViewRef.current?.capturePhoto();
     if (!photo) return;
+    triggerCaptureFlash();
     sendPhoto(photo);
-  }, [sendPhoto]);
+  }, [sendPhoto, triggerCaptureFlash]);
 
   const handleTopicTap = useCallback(
     (topicId: string, topicLabel: string) => {
@@ -407,14 +427,21 @@ export default function MainPage() {
             onCapturePhoto={() => cameraViewRef.current?.capturePhoto() ?? ''}
           />
           <RestorationOverlay state={restorationState} beforeImage={beforeImage} locale={locale} />
+          {/* 셔터 플래시 */}
+          {showCaptureFlash && (
+            <div className="absolute inset-0 bg-white/80 z-20 animate-[fadeOut_0.2s_ease-out_forwards]" />
+          )}
+          {/* 카메라 셔터 버튼 */}
           {restorationState.status === 'idle' && (
             <div className="absolute bottom-3 left-0 right-0 flex justify-center z-10">
               <button
                 onClick={handleCapture}
-                className="px-5 py-2 bg-timelens-gold/90 text-black rounded-full font-semibold text-xs
-                           active:scale-95 transition-transform shadow-lg shadow-timelens-gold/30"
+                className="w-14 h-14 rounded-full border-[3px] border-white/90 bg-white/20
+                           backdrop-blur-sm flex items-center justify-center
+                           active:scale-90 transition-transform shadow-lg shadow-black/30"
+                aria-label={t('session.capture')}
               >
-                {t('session.capture')}
+                <div className="w-10 h-10 rounded-full bg-white/90" />
               </button>
             </div>
           )}

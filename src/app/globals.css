@@ -152,6 +152,12 @@
   display: none;
 }
 
+/* Camera shutter flash */
+@keyframes fadeOut {
+  0% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
 /* Landing page 배경 오브 애니메이션 */
 @keyframes float {
   0%, 100% { transform: translate(0, 0) scale(1); }
@@ -184,11 +190,6 @@
 @keyframes glow-pulse {
   0%, 100% { box-shadow: 0 0 8px rgba(212, 165, 116, 0.3); }
   50% { box-shadow: 0 0 20px rgba(212, 165, 116, 0.5); }
-}
-
-@keyframes typing-dot {
-  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
-  30% { opacity: 1; transform: translateY(-4px); }
 }
 
 @keyframes live-pulse {

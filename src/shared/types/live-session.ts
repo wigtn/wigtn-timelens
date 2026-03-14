@@ -148,6 +148,8 @@ export interface UseLiveSessionReturn {
   beforeImage: string | null;
   /** UI 카메라 캡처 함수 ref — CameraView 연결용 (auto-capture) */
   capturePhotoRef: React.RefObject<(() => string | null) | null>;
+  /** 캡처 시 셔터 플래시 콜백 ref — auto-capture에서도 시각 피드백 제공 */
+  onCaptureFlashRef: React.RefObject<(() => void) | null>;
 }
 
 export interface TranscriptChunk {
