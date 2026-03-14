@@ -94,42 +94,6 @@ const ChatBubble = memo(function ChatBubble({
   );
 });
 
-function TypingIndicator() {
-  return (
-    <div className="flex gap-2.5 items-start pr-10">
-      <div
-        className="shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-timelens-gold/40 to-timelens-bronze/30
-                    border border-timelens-gold/25 flex items-center justify-center
-                    shadow-sm shadow-timelens-gold/10"
-      >
-        <span className="text-sm leading-none">&#127963;</span>
-      </div>
-      <div className="flex flex-col gap-0.5">
-        <span className="text-[10px] font-semibold text-timelens-gold/60 tracking-wider uppercase ml-1">
-          TimeLens
-        </span>
-        <div
-          className="px-4 py-3 rounded-2xl rounded-bl-md bg-gradient-to-br from-white/[0.07] to-white/[0.03]
-                      backdrop-blur-sm border border-white/[0.08]"
-        >
-          <div className="flex items-center gap-1.5">
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                className="w-1.5 h-1.5 rounded-full bg-timelens-gold/60"
-                style={{
-                  animation: `typing-dot 1.2s ease-in-out infinite`,
-                  animationDelay: `${i * 0.2}s`,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /** 메시지 간 시간 간격이 60초 이상이면 타임스탬프 표시 */
 function shouldShowTime(chunks: TranscriptChunk[], index: number): boolean {
   if (index === 0) return true;
@@ -180,7 +144,7 @@ export default function TranscriptChat({ chunks, isStreaming, locale = 'ko' }: T
         />
       ))}
 
-      {isStreaming && <TypingIndicator />}
+      {/* Typing indicator removed — top nav audio visualizer + streaming transcript already show AI is speaking */}
     </div>
   );
 }

@@ -35,11 +35,12 @@ function sanitizeTranscript(text: string): string {
  */
 export function cleanOutputTranscript(text: string): string {
   return sanitizeTranscript(text)
-    // 구두점(. ? ! ,) 뒤에 공백 없이 문자가 오면 공백 삽입
-    // 숫자·따옴표·다른 구두점 앞에서는 삽입하지 않음
-    .replace(/([.?!,])(?=[^\s.?!,\d'"])/g, '$1 ')
-    // 연속 공백 축소
-    .replace(/\s{2,}/g, ' ');
+    // 문장 종결 구두점(. ? !) 뒤에 공백 없이 문자가 오면 줄바꿈 삽입 — 문장 단위 분리
+    .replace(/([.?!])(?=[^\s.?!,\d'"])/g, '$1\n')
+    // 쉼표(,) 뒤에 공백 없이 문자가 오면 공백 삽입
+    .replace(/(,)(?=[^\s.?!,\d'"])/g, '$1 ')
+    // 연속 공백 축소 (줄바꿈은 유지)
+    .replace(/[^\S\n]{2,}/g, ' ');
 }
 
 export interface LiveSessionConfig {
