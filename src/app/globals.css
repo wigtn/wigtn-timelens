@@ -135,10 +135,37 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 
-  html, body {
+  /* Safari: html에 overflow:hidden을 걸면 fixed 컨테이너 내부 스크롤이 막힘 → html은 height만 */
+  html {
+    height: 100%;
+  }
+
+  body {
     height: 100%;
     overflow: hidden;
+    /* iOS Safari 모멘텀 스크롤 */
+    -webkit-overflow-scrolling: touch;
   }
+}
+
+/* ── Safari 호환성 패치 ── */
+
+/* dvh 단위 폴백 (Safari 15.4 미만은 100vh → -webkit-fill-available 사용) */
+.min-h-dvh {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  min-height: 100dvh;
+}
+.h-dvh {
+  height: 100vh;
+  height: -webkit-fill-available;
+  height: 100dvh;
+}
+
+/* 스크롤 가능 컨테이너 — iOS Safari 모멘텀 스크롤 */
+.overflow-y-auto,
+.overflow-y-scroll {
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 스크롤바 숨기기 */
@@ -183,6 +210,18 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Museum 카드 reveal — scale + fade (깜빡임 없는 전환) */
+@keyframes cardReveal {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -333,11 +372,26 @@
   50%       { opacity: 1; }
 }
 
-/* 발견 카드 dot 팝 */
+/* 발견 카드 dot 팝 (단발) */
 @keyframes dot-pop {
   0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
   60%  { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
   100% { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+}
+
+/* 발견 카드 레이더 블립 — 스윕이 지나갈 때만 번쩍이고 사라짐 (무한 반복) */
+@keyframes radar-blip {
+  0%   { opacity: 0; }
+  5%   { opacity: 1; }
+  22%  { opacity: 0.85; }
+  32%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* 히어로 하단 스크롤 유도 chevron */
+@keyframes scroll-bounce {
+  0%, 100% { opacity: 0.25; transform: translateY(0); }
+  50%       { opacity: 0.9;  transform: translateY(5px); }
 }
 
 /* 다이어리 카드 커서 깜빡임 */

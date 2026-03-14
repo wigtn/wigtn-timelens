@@ -405,6 +405,7 @@ export function useLiveSession(): UseLiveSessionReturn {
   const capturePhotoRef = useRef<(() => string | null) | null>(null);
   const onCaptureFlashRef = useRef<(() => void) | null>(null);
   const openCameraAndCaptureRef = useRef<((prompt: string) => void) | null>(null);
+  const connectGenRef = useRef(0); // 진행 중인 connect() 취소용 세대 카운터
 
   // 브라우저 Geolocation으로 좌표 추적
   useEffect(() => {
@@ -424,7 +425,9 @@ export function useLiveSession(): UseLiveSessionReturn {
   const connect = useCallback(async (config: SessionConfig) => {
     const language = config.language;
     languageRef.current = language;
-    dbg('[connect] START language:', language);
+    const myGen = ++connectGenRef.current;
+    const cancelled = () => myGen !== connectGenRef.current;
+    dbg('[connect] START language:', language, 'gen:', myGen);
 
     try {
       // 1. Firebase 익명 인증 (5초 타임아웃, 실패 시 건너뜀)
@@ -442,6 +445,7 @@ export function useLiveSession(): UseLiveSessionReturn {
         console.warn('[connect] 1. Auth skipped:', authErr);
         userIdRef.current = `anon-${Date.now()}`;
       }
+      if (cancelled()) { dbg('[connect] cancelled@1'); return; }
 
       // 2. 서버에서 Ephemeral Token 획득
       dbg('[connect] 2. Fetching /api/session...');
@@ -450,6 +454,7 @@ export function useLiveSession(): UseLiveSessionReturn {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ language }),
       });
+      if (cancelled()) { dbg('[connect] cancelled@2'); return; }
       const json = await res.json();
       dbg('[connect] 2. Session response:', json.success, json.data?.sessionId?.slice(0, 8));
       if (!json.success) {
@@ -471,9 +476,10 @@ export function useLiveSession(): UseLiveSessionReturn {
       } catch (fsErr) {
         console.warn('[connect] 3. Firestore skipped:', fsErr);
       }
+      if (cancelled()) { dbg('[connect] cancelled@3'); return; }
 
-      dbg('[connect] 4. Creating LiveSession...');
       // 4. 이벤트 핸들러 + LiveSession 생성
+      dbg('[connect] 4. Creating LiveSession...');
       const refs: SessionRefs = {
         liveSession: liveSessionRef,
         sessionId: sessionIdRef,
@@ -497,15 +503,13 @@ export function useLiveSession(): UseLiveSessionReturn {
 
       const liveSession = new LiveSession(events);
       liveSession.setUserId(userIdRef.current);
-      liveSessionRef.current = liveSession;
 
       // 5. AudioPlayback
       const playback = createAudioPlayback();
-      audioPlaybackRef.current = playback;
       liveSession.setAudioDataHandler(playback.enqueue);
 
       // 6. ReconnectManager
-      reconnectRef.current = createReconnectManager({
+      const reconnect = createReconnectManager({
         maxAttempts: 3,
         baseDelayMs: 1000,
         maxDelayMs: 8000,
@@ -520,8 +524,9 @@ export function useLiveSession(): UseLiveSessionReturn {
         },
       });
 
-      // 7. LiveSession 연결
+      // 7. LiveSession 연결 — 이벤트 핸들러가 liveSessionRef를 참조하므로 connect 전에 할당
       dbg('[connect] 7. Connecting LiveSession...');
+      liveSessionRef.current = liveSession;
       const liveConfig: LiveSessionConfig = {
         token, language, sessionId,
         museum: config.museum ? { name: config.museum.name, address: config.museum.address } : undefined,
@@ -529,25 +534,61 @@ export function useLiveSession(): UseLiveSessionReturn {
       await liveSession.connect(liveConfig);
       dbg('[connect] 7. LiveSession connected!');
 
+      if (cancelled()) {
+        dbg('[connect] cancelled@7, cleaning up');
+        liveSession.disconnect();
+        liveSessionRef.current = null;
+        playback.stop();
+        return;
+      }
+      audioPlaybackRef.current = playback;
+      reconnectRef.current = reconnect;
+
       // 8. AudioCapture
       dbg('[connect] 8. Starting audio capture...');
       const audioCapture = createAudioCapture({
         onChunk: (base64Pcm) => liveSessionRef.current?.sendAudio(base64Pcm),
         onLevelChange: () => {},
       });
-      audioCaptureRef.current = audioCapture;
       await audioCapture.start();
+
+      if (cancelled()) {
+        dbg('[connect] cancelled@8, cleaning up');
+        audioCapture.stop();
+        liveSession.disconnect();
+        liveSessionRef.current = null;
+        playback.stop();
+        audioPlaybackRef.current = null;
+        reconnect.cancel();
+        reconnectRef.current = null;
+        return;
+      }
+      audioCaptureRef.current = audioCapture;
 
       // 9. CameraCapture (프리뷰만 — 프레임 상시 전송 안 함, 온디맨드)
       dbg('[connect] 9. Starting camera...');
       const cameraCapture = createCameraCapture();
-      cameraCaptureRef.current = cameraCapture;
       try {
         await cameraCapture.start();
         dbg('[connect] 9. Camera OK');
       } catch (cameraErr) {
         console.warn('[connect] 9. Camera skipped:', cameraErr);
       }
+
+      if (cancelled()) {
+        dbg('[connect] cancelled@9, cleaning up');
+        cameraCapture.stop();
+        audioCapture.stop();
+        audioCaptureRef.current = null;
+        liveSession.disconnect();
+        liveSessionRef.current = null;
+        playback.stop();
+        audioPlaybackRef.current = null;
+        reconnect.cancel();
+        reconnectRef.current = null;
+        return;
+      }
+      cameraCaptureRef.current = cameraCapture;
 
       // 9b. Frame capture handler for restoration before-image
       liveSession.setFrameCaptureHandler(() => cameraCapture.captureFrame());
@@ -556,6 +597,7 @@ export function useLiveSession(): UseLiveSessionReturn {
       dbg('[connect] 10. DONE — setting connected');
       setSessionState(prev => ({ ...prev, sessionId, status: 'connected' }));
     } catch (err) {
+      if (cancelled()) return; // 취소된 경우 에러 상태 업데이트 스킵
       console.error('[connect] FAILED:', err);
       setSessionState(prev => ({ ...prev, isFallbackMode: true, status: 'disconnected' }));
     }
@@ -564,6 +606,7 @@ export function useLiveSession(): UseLiveSessionReturn {
   // ── disconnect ────────────────────────────────────────────
 
   const disconnect = useCallback(() => {
+    connectGenRef.current++; // 진행 중인 connect() async 체인 전부 취소
     reconnectRef.current?.cancel();
     cameraCaptureRef.current?.stop();
     audioCaptureRef.current?.stop();
@@ -574,10 +617,19 @@ export function useLiveSession(): UseLiveSessionReturn {
     audioCaptureRef.current = null;
     audioPlaybackRef.current = null;
     liveSessionRef.current = null;
+    sessionIdRef.current = null;
+    currentArtifactRef.current = null;
 
     setSessionState(INITIAL_STATE);
     setAudioState('idle');
     setActiveAgent('curator');
+    setTranscript([]);
+    setCurrentArtifact(null);
+    setRestorationState({ status: 'idle' });
+    setDiscoverySites([]);
+    setDiaryResult(null);
+    setBeforeImage(null);
+    setToolResult(null);
   }, []);
 
   // ── 컨트롤 ───────────────────────────────────────────────

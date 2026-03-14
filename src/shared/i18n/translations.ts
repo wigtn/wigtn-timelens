@@ -98,6 +98,92 @@ const translations = {
     hi: 'कैमरा और माइक्रोफ़ोन अनुमति आवश्यक',
   },
 
+  // ── Landing Page — Extended ───────────────────────────────
+  'landing.heroTagline': {
+    ko: '박물관이 살아 숨쉬는 경험',
+    en: 'Museums Come Alive',
+    ja: '博物館が蘇る体験',
+    zh: '博物馆焕然一生',
+    hi: 'संग्रहालय जीवंत हों',
+  },
+  'landing.statementHead': {
+    ko: '유물에 카메라를\n비추는 순간,',
+    en: 'Point your camera\nat an artifact, and',
+    ja: '遺物にカメラを\n向けた瞬間,',
+    zh: '将相机对准文物\n的那一刻,',
+    hi: 'कलाकृति पर\nकैमरा धरते ही,',
+  },
+  'landing.statementMid': {
+    ko: '천 년의 이야기',
+    en: 'a thousand-year story',
+    ja: '千年の物語',
+    zh: '千年故事',
+    hi: 'हजार साल की कहानी',
+  },
+  'landing.statementTail': {
+    ko: '가\n시작됩니다.',
+    en: '\nbegins.',
+    ja: 'が\n始まります。',
+    zh: '\n就此开始。',
+    hi: '\nशुरू होती है।',
+  },
+  'landing.statementDesc': {
+    ko: 'AI가 문화유산을 인식하고, 복원하고,\n당신만의 역사 여행을 기록합니다.',
+    en: 'AI recognizes, restores, and records\nyour personal journey through history.',
+    ja: 'AIが文化遺産を認識し、復元し、\nあなただけの歴史の旅を記録します。',
+    zh: 'AI识别、修复并记录\n您的个人历史之旅。',
+    hi: 'AI पहचानता, पुनर्स्थापित करता\nऔर आपकी ऐतिहासिक यात्रा रिकॉर्ड करता है।',
+  },
+  'landing.stat1Value': {
+    ko: '3초', en: '3sec', ja: '3秒', zh: '3秒', hi: '3सेक',
+  },
+  'landing.stat1Label': {
+    ko: '평균 인식 속도', en: 'Avg Recognition', ja: '平均認識速度', zh: '平均识别速度', hi: 'औसत पहचान',
+  },
+  'landing.stat2Value': {
+    ko: '1만+', en: '10K+', ja: '1万以上', zh: '1万+', hi: '10K+',
+  },
+  'landing.stat2Label': {
+    ko: '등록 문화유산', en: 'Heritage Sites', ja: '登録文化遺産', zh: '文化遗产', hi: 'विरासत स्थल',
+  },
+  'landing.stat3Label': {
+    ko: 'AI 음성 도슨트', en: 'AI Voice Docent', ja: 'AI音声案内', zh: 'AI语音讲解', hi: 'AI वॉइस गाइड',
+  },
+  'landing.feature1.cardDesc': {
+    ko: '카메라를 유물에 비추는 것만으로 AI가 즉시 인식하고, 음성으로 생생한 이야기를 들려줍니다.',
+    en: 'Simply point your camera at an artifact and AI instantly recognizes it, narrating its vivid story.',
+    ja: 'カメラを遺物に向けるだけでAIが即座に認識し、音声で生き生きとした物語を語ります。',
+    zh: '只需将相机对准文物，AI即刻识别并用语音讲述生动故事。',
+    hi: 'कलाकृति पर कैमरा लगाएं, AI तुरंत पहचानकर आवाज़ में कहानी सुनाएगा।',
+  },
+  'landing.feature2.cardDesc': {
+    ko: '세월에 닳고 손상된 유물의 원래 모습을 역사적 고증에 맞게 복원합니다.',
+    en: 'Restores the original appearance of time-worn artifacts with historical accuracy.',
+    ja: '長年にわたり傷んだ遺物の元の姿を歴史的考証に基づき復元します。',
+    zh: '根据历史考证，还原受损文物的原始面貌。',
+    hi: 'ऐतिहासिक सटीकता के साथ क्षतिग्रस्त कलाकृतियों का मूल रूप पुनर्स्थापित करता है।',
+  },
+  'landing.feature3.cardDesc': {
+    ko: '지금 서 있는 곳을 기준으로 걸어서 갈 수 있는 문화유산을 찾아드립니다.',
+    en: 'Finds cultural heritage sites within walking distance from where you stand.',
+    ja: '現在地から歩いて行ける文化遺産を見つけます。',
+    zh: '从您所在位置步行可达的文化遗产。',
+    hi: 'आपके स्थान से पैदल दूरी पर सांस्कृतिक विरासत स्थल खोजता है।',
+  },
+  'landing.feature4.cardDesc': {
+    ko: '오늘의 관람을 AI가 기억하고 감성적인 다이어리로 정리해 드립니다.',
+    en: "AI remembers today's visit and crafts it into an emotional diary.",
+    ja: '今日の観覧をAIが記憶し、感性豊かなダイアリーにまとめます。',
+    zh: 'AI记录今日参观并整理成充满情感的日记。',
+    hi: 'AI आज की यात्रा को याद रखकर भावनात्मक डायरी बनाता है।',
+  },
+  'landing.scanning': {
+    ko: '주변 탐색 중', en: 'Scanning nearby', ja: '周辺スキャン中', zh: '扫描附近', hi: 'आस-पास स्कैन',
+  },
+  'landing.marqueeTitle': {
+    ko: '탐험 가능한 공간', en: 'Places to Explore', ja: '探検できる場所', zh: '可探索的地方', hi: 'अन्वेषण के स्थान',
+  },
+
   // ── Language Selector ─────────────────────────────────────
   'lang.title': {
     ko: '언어 선택',
@@ -300,11 +386,11 @@ const translations = {
     hi: 'आस-पास की जगहें खोजने के लिए स्थान अनुमति दें',
   },
   'museum.confirmStart': {
-    ko: '여기서 시작',
-    en: 'Start Here',
-    ja: 'ここから始める',
-    zh: '从这里开始',
-    hi: 'यहाँ से शुरू करें',
+    ko: '큐레이팅 시작',
+    en: 'Start Curating',
+    ja: 'キュレーション開始',
+    zh: '开始策展',
+    hi: 'क्यूरेटिंग शुरू करें',
   },
   'museum.confirmCancel': {
     ko: '취소',

@@ -9,7 +9,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Mic, Sparkles, Compass, BookOpen } from "lucide-react";
+import { Camera, Mic, Sparkles, Compass, BookOpen, ChevronDown } from "lucide-react";
 import { t, type Locale } from "@shared/i18n";
 
 const LANGUAGES: { code: Locale; label: string; flag: string; hint: string }[] =
@@ -21,34 +21,49 @@ const LANGUAGES: { code: Locale; label: string; flag: string; hint: string }[] =
     { code: "hi", label: "हिन्दी", flag: "🇮🇳", hint: "Hindi" },
   ];
 
-const ARTIFACTS = [
-  "청자상감운학문매병 · 고려시대",
-  "금동미륵보살반가사유상 · 삼국시대",
-  "백자청화매죽문호 · 조선시대",
-];
+const ARTIFACTS_BY_LOCALE: Record<Locale, string[]> = {
+  ko: ["청자상감운학문매병 · 고려시대", "금동미륵보살반가사유상 · 삼국시대", "백자청화매죽문호 · 조선시대"],
+  en: ["Celadon Melon Bottle · Goryeo", "Gilt Bronze Bodhisattva · Three Kingdoms", "Blue & White Porcelain Jar · Joseon"],
+  ja: ["青磁象嵌雲鶴文梅瓶 · 高麗時代", "金銅弥勒菩薩半跏像 · 三国時代", "白磁青花梅竹文壺 · 朝鮮時代"],
+  zh: ["青瓷象嵌云鹤文梅瓶 · 高丽", "金铜弥勒菩萨半跏像 · 三国", "白瓷青花梅竹文壶 · 朝鲜"],
+  hi: ["सेलाडन मेलन बोतल · गोरियो", "गिल्ट ब्रॉन्ज़ बोधिसत्व · तीन राज्य", "ब्लू-व्हाइट जार · जोसियन"],
+};
 
-const DIARY_DATA = [
-  {
-    text: "고려청자의 비취색을 처음 실물로 마주한 순간, 천 년 전 장인의 손길이 온몸으로 느껴졌다.",
-    tags: ["국립중앙박물관", "청자", "고려시대"],
-  },
-  {
-    text: "경복궁 근정전 앞에 섰을 때, 조선의 위엄이 발끝부터 전해져 왔다. 잊지 못할 하루.",
-    tags: ["경복궁", "근정전", "조선시대"],
-  },
-  {
-    text: "백자청화의 단아한 선을 따라 시선이 머물렀다. 오늘 나는 다른 시대를 잠시 살았다.",
-    tags: ["백자청화", "조선시대", "3점 관람"],
-  },
-];
+const DIARY_DATA_BY_LOCALE: Record<Locale, { text: string; tags: string[] }[]> = {
+  ko: [
+    { text: "고려청자의 비취색을 처음 실물로 마주한 순간, 천 년 전 장인의 손길이 온몸으로 느껴졌다.", tags: ["국립중앙박물관", "청자", "고려시대"] },
+    { text: "경복궁 근정전 앞에 섰을 때, 조선의 위엄이 발끝부터 전해져 왔다. 잊지 못할 하루.", tags: ["경복궁", "근정전", "조선시대"] },
+    { text: "백자청화의 단아한 선을 따라 시선이 머물렀다. 오늘 나는 다른 시대를 잠시 살았다.", tags: ["백자청화", "조선시대", "3점 관람"] },
+  ],
+  en: [
+    { text: "The moment I first saw the jade-green celadon in person, I felt the hands of a craftsman from a thousand years ago.", tags: ["National Museum", "Celadon", "Goryeo"] },
+    { text: "Standing before Geunjeongjeon Hall at Gyeongbokgung, the dignity of Joseon rose through my feet. A day I'll never forget.", tags: ["Gyeongbokgung", "Throne Hall", "Joseon"] },
+    { text: "My gaze lingered along the elegant lines of the blue-and-white porcelain. Today, I briefly lived in another era.", tags: ["Blue-White Porcelain", "Joseon", "3 Exhibits"] },
+  ],
+  ja: [
+    { text: "高麗青磁の翡翠色を初めて実物で目にした瞬間、千年前の職人の手が体全体に感じられた。", tags: ["国立中央博物館", "青磁", "高麗時代"] },
+    { text: "景福宮の勤政殿の前に立ったとき、朝鮮の威厳が足元から伝わってきた。忘れられない一日。", tags: ["景福宮", "勤政殿", "朝鮮時代"] },
+    { text: "白磁青花の端正な線をたどると、視線が止まった。今日、私は少しの間、別の時代を生きた。", tags: ["白磁青花", "朝鮮時代", "3点観覧"] },
+  ],
+  zh: [
+    { text: "第一次亲眼看到高丽青瓷那翡翠色的瞬间，仿佛感受到了千年前工匠的双手。", tags: ["国立中央博物馆", "青瓷", "高丽"] },
+    { text: "站在景福宫勤政殿前，朝鲜王朝的威严从脚底传遍全身。难忘的一天。", tags: ["景福宫", "勤政殿", "朝鲜"] },
+    { text: "目光沿着白瓷青花端庄的线条流连，今天我短暂地活在了另一个时代。", tags: ["白瓷青花", "朝鲜", "3件展品"] },
+  ],
+  hi: [
+    { text: "पहली बार सेलाडन की जेड हरी रंग को सामने देखते ही, हजार साल पुराने कारीगर के हाथों का एहसास हुआ।", tags: ["राष्ट्रीय संग्रहालय", "सेलाडन", "गोरियो"] },
+    { text: "ग्योंगबोक्गुंग के गुनजेओंगजेओन हॉल के सामने खड़े होकर, जोसियन की शान पैरों से महसूस हुई।", tags: ["ग्योंगबोक्गुंग", "सिंहासन हॉल", "जोसियन"] },
+    { text: "नीले-सफेद चीनी मिट्टी की सुंदर रेखाओं पर नज़र टिकी रही। आज मैं थोड़ी देर के लिए दूसरे युग में जीया।", tags: ["नीली-सफ़ेद मिट्टी", "जोसियन", "3 प्रदर्शनी"] },
+  ],
+};
 
+// cx/cy: pixel offset from center — within the rotating sweep circle (88px radius)
+// scanDelay = ((CSS_angle - 330 + 360) % 360) / 360 * 2200  (sweep period 2.2s, peak at conic 330°)
 const HERITAGE_SITES = [
-  { x: "22%", y: "25%", delay: 90, name: "근정전", dist: "120m" },
-  { x: "73%", y: "30%", delay: 200, name: "경회루", dist: "350m" },
-  { x: "16%", y: "70%", delay: 300, name: "향원정", dist: "480m" },
-  { x: "68%", y: "72%", delay: 380, name: "자경전", dist: "620m" },
-  { x: "85%", y: "50%", delay: 20, name: "교태전", dist: "890m" },
-  { x: "45%", y: "18%", delay: 140, name: "흥례문", dist: "200m" },
+  { cx: -52, cy: -32, scanDelay: 2025, name: "근정전", dist: "120m" }, // NW 302°
+  { cx:  50, cy: -35, scanDelay:  520, name: "경회루", dist: "350m" }, // NE  55°
+  { cx: -40, cy:  50, scanDelay: 1520, name: "향원정", dist: "480m" }, // SW 219°
+  { cx:  48, cy:  48, scanDelay: 1008, name: "자경전", dist: "620m" }, // SE 135°
 ];
 
 /**
@@ -88,28 +103,19 @@ function rv(visible: boolean, delay = 0): CSSProperties {
   };
 }
 
-const MUSEUMS = [
-  "경복궁",
-  "국립중앙박물관",
-  "창덕궁",
-  "불국사",
-  "석굴암",
-  "수원화성",
-  "국립고궁박물관",
-  "덕수궁",
-  "국립민속박물관",
-  "경주역사유적지구",
-  "해인사",
-  "종묘",
-  "창경궁",
-  "국립국악원",
-];
+const MUSEUMS_BY_LOCALE: Record<Locale, string[]> = {
+  ko: ["경복궁", "국립중앙박물관", "창덕궁", "불국사", "석굴암", "수원화성", "국립고궁박물관", "덕수궁", "국립민속박물관", "경주역사유적지구", "해인사", "종묘", "창경궁", "국립국악원"],
+  en: ["Gyeongbokgung", "National Museum of Korea", "Changdeokgung", "Bulguksa", "Seokguram Grotto", "Hwaseong Fortress", "National Palace Museum", "Deoksugung", "National Folk Museum", "Gyeongju Historic Areas", "Haeinsa", "Jongmyo Shrine", "Changgyeonggung", "National Gugak Center"],
+  ja: ["景福宮", "国立中央博物館", "昌徳宮", "仏国寺", "石窟庵", "水原華城", "国立古宮博物館", "徳寿宮", "国立民俗博物館", "慶州歴史地区", "海印寺", "宗廟", "昌慶宮", "国立国楽院"],
+  zh: ["景福宫", "国立中央博物馆", "昌德宫", "佛国寺", "石窟庵", "水原华城", "国立古宫博物馆", "德寿宫", "国立民俗博物馆", "庆州历史地区", "海印寺", "宗庙", "昌庆宫", "国立国乐院"],
+  hi: ["ग्योंगबोक्गुंग", "कोरिया राष्ट्रीय संग्रहालय", "चांगदेओक्गुंग", "बुल्गुकसा", "सेओक्गुरम", "ह्वासेओंग किला", "राष्ट्रीय महल संग्रहालय", "डेओक्सुगुंग", "राष्ट्रीय लोक संग्रहालय", "ग्योंगजू ऐतिहासिक क्षेत्र", "हेइन्सा", "जोंग्म्यो", "चांगग्योंग्गुंग", "राष्ट्रीय गुगाक केंद्र"],
+};
 
 export default function LandingPage() {
   const [isStarting, setIsStarting] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [selectedLang, setSelectedLang] = useState<Locale | null>(null);
+  const [selectedLang, setSelectedLang] = useState<Locale>("en");
   const router = useRouter();
 
   // 카드마다 독립 ref — 순차 스크롤 reveal 보장
@@ -126,7 +132,6 @@ export default function LandingPage() {
   }, []);
 
   const handleStart = () => {
-    if (!selectedLang) return;
     setIsStarting(true);
     setIsExiting(true);
     setTimeout(() => {
@@ -139,6 +144,11 @@ export default function LandingPage() {
       }
     }, 680);
   };
+
+  // ── locale별 데이터 파생 ──
+  const artifacts = ARTIFACTS_BY_LOCALE[selectedLang];
+  const diaryData = DIARY_DATA_BY_LOCALE[selectedLang];
+  const museums = MUSEUMS_BY_LOCALE[selectedLang];
 
   // ── 카드 자동 재생 상태 ──
 
@@ -158,7 +168,7 @@ export default function LandingPage() {
     const interval = setInterval(() => {
       setArtifactVisible(false);
       setTimeout(() => {
-        setArtifactIdx((i) => (i + 1) % ARTIFACTS.length);
+        setArtifactIdx((i) => (i + 1) % artifacts.length);
         setArtifactVisible(true);
       }, 280);
     }, 2200);
@@ -219,7 +229,7 @@ export default function LandingPage() {
     if (diaryTypeRef.current) clearInterval(diaryTypeRef.current);
     if (diaryCycleRef.current) clearTimeout(diaryCycleRef.current);
 
-    const fullText = DIARY_DATA[diaryEntryIdx].text;
+    const fullText = diaryData[diaryEntryIdx].text;
     let i = 0;
     setTypedText("");
     setTextComplete(false);
@@ -234,7 +244,7 @@ export default function LandingPage() {
         diaryCycleRef.current = setTimeout(() => {
           setTextComplete(false);
           setTypedText("");
-          setDiaryEntryIdx((idx) => (idx + 1) % DIARY_DATA.length);
+          setDiaryEntryIdx((idx) => (idx + 1) % diaryData.length);
         }, 2500);
       }
     }, 42);
@@ -343,7 +353,7 @@ export default function LandingPage() {
               transform: mounted ? "translateY(0)" : "translateY(10px)",
               transition: "opacity 0.5s ease 430ms, transform 0.5s ease 430ms",
             }}>
-              박물관이 살아 숨쉬는 경험
+              {t("landing.heroTagline", selectedLang)}
             </p>
 
             {/* 서브타이틀 — 페이드만 (조용하게) */}
@@ -395,33 +405,23 @@ export default function LandingPage() {
               {/* 시작하기 버튼 */}
               <button
                 onClick={handleStart}
-                disabled={isStarting || !selectedLang}
+                disabled={isStarting}
                 className="relative w-full h-14 rounded-2xl font-semibold text-base overflow-hidden
                            active:scale-[0.97] transition-all duration-300"
                 style={{
-                  background: selectedLang
-                    ? "linear-gradient(135deg, #C8935A 0%, #D4A574 50%, #B8793A 100%)"
-                    : "rgba(255,255,255,0.05)",
-                  color: selectedLang ? "#1a0f00" : "rgba(255,255,255,0.2)",
-                  boxShadow: selectedLang
-                    ? "0 4px 28px rgba(212,165,116,0.28), inset 0 1px 0 rgba(255,255,255,0.18)"
-                    : "none",
-                  border: selectedLang ? "none" : "1px solid rgba(255,255,255,0.07)",
-                  cursor: selectedLang ? "pointer" : "not-allowed",
+                  background: "linear-gradient(135deg, #C8935A 0%, #D4A574 50%, #B8793A 100%)",
+                  color: "#1a0f00",
+                  boxShadow: "0 4px 28px rgba(212,165,116,0.28), inset 0 1px 0 rgba(255,255,255,0.18)",
                 }}
               >
                 {isStarting ? (
                   <span className="relative flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-black/20 border-t-black/50 rounded-full animate-spin" />
-                    {selectedLang ? t("landing.ctaLoading", selectedLang) : "..."}
-                  </span>
-                ) : selectedLang ? (
-                  <span className="relative">
-                    {t("landing.cta", selectedLang)}
+                    {t("landing.ctaLoading", selectedLang)}
                   </span>
                 ) : (
-                  <span className="relative" style={{ letterSpacing: "0.02em" }}>
-                    Select Language
+                  <span className="relative">
+                    {t("landing.cta", selectedLang)}
                   </span>
                 )}
               </button>
@@ -429,10 +429,38 @@ export default function LandingPage() {
               <div className="flex items-center justify-center gap-1.5 mt-4">
                 <Mic className="w-3 h-3 text-gray-700" />
                 <p className="text-[12px] text-gray-600">
-                  {selectedLang ? t("landing.permissionNote", selectedLang) : "Camera & microphone required"}
+                  {t("landing.permissionNote", selectedLang)}
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* 스크롤 유도 인디케이터 */}
+        <div
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 pointer-events-none"
+          style={{
+            opacity: isExiting ? 0 : 1,
+            transition: "opacity 0.3s ease",
+          }}
+        >
+          <span
+            className="text-[10px] tracking-[0.22em] uppercase"
+            style={{ color: "rgba(212,165,116,0.35)" }}
+          >
+            scroll
+          </span>
+          <div className="flex flex-col items-center" style={{ gap: "2px" }}>
+            {[0, 1, 2].map((i) => (
+              <ChevronDown
+                key={i}
+                className="w-3.5 h-3.5"
+                style={{
+                  color: "rgba(212,165,116,0.6)",
+                  animation: `scroll-bounce 1.6s ease-in-out ${i * 180}ms infinite`,
+                }}
+              />
+            ))}
           </div>
         </div>
       </section>
@@ -472,17 +500,17 @@ export default function LandingPage() {
               color: "rgba(255,255,255,0.92)",
             }}
           >
-            유물에 카메라를
+            {t("landing.statementHead", selectedLang).split("\n").flatMap((l, i, a) =>
+              i < a.length - 1 ? [l, <br key={i}/>] : [l]
+            )}
             <br />
-            비추는 순간,
-            <br />
-            <span style={{ color: "#D4A574" }}>천 년의 이야기</span>가<br />
-            시작됩니다.
+            <span style={{ color: "#D4A574" }}>{t("landing.statementMid", selectedLang)}</span>
+            {t("landing.statementTail", selectedLang).split("\n").flatMap((l, i) =>
+              i === 0 ? [l] : [<br key={`t${i}`}/>, l]
+            )}
           </h2>
-          <p className="text-sm text-gray-500 leading-[1.85]">
-            AI가 문화유산을 인식하고, 복원하고,
-            <br />
-            당신만의 역사 여행을 기록합니다.
+          <p className="text-sm text-gray-500 leading-[1.85]" style={{ whiteSpace: "pre-line" }}>
+            {t("landing.statementDesc", selectedLang)}
           </p>
         </div>
 
@@ -493,9 +521,9 @@ export default function LandingPage() {
           style={{ background: "rgba(255,255,255,0.025)" }}
         >
           {[
-            { value: "3초", label: "평균 인식 속도" },
-            { value: "1만+", label: "등록 문화유산" },
-            { value: "24/7", label: "AI 음성 도슨트" },
+            { value: t("landing.stat1Value", selectedLang), label: t("landing.stat1Label", selectedLang) },
+            { value: t("landing.stat2Value", selectedLang), label: t("landing.stat2Label", selectedLang) },
+            { value: "24/7", label: t("landing.stat3Label", selectedLang) },
           ].map((stat, i) => (
             <div
               key={i}
@@ -665,7 +693,7 @@ export default function LandingPage() {
                   className="w-1.5 h-1.5 rounded-full bg-emerald-400"
                   style={{ boxShadow: "0 0 5px #34d399" }}
                 />
-                {ARTIFACTS[artifactIdx]}
+                {artifacts[artifactIdx]}
               </div>
             </div>
           </div>
@@ -680,12 +708,11 @@ export default function LandingPage() {
                 <Camera className="w-3.5 h-3.5" style={{ color: "#D4A574" }} />
               </div>
               <h3 className="text-base font-semibold text-white tracking-tight">
-                실시간 유물 인식
+                {t("landing.feature1.title", selectedLang)}
               </h3>
             </div>
             <p className="text-sm text-gray-400 leading-[1.8]">
-              카메라를 유물에 비추는 것만으로 AI가 즉시 인식하고, 음성으로
-              생생한 이야기를 들려줍니다.
+              {t("landing.feature1.cardDesc", selectedLang)}
             </p>
           </div>
         </div>
@@ -815,7 +842,7 @@ export default function LandingPage() {
                 }}
               >
                 <Sparkles className="w-3 h-3" />
-                복원 완료
+                {t("session.restorationDone", selectedLang)}
               </div>
             </div>
           </div>
@@ -829,12 +856,11 @@ export default function LandingPage() {
                 <Sparkles className="w-3.5 h-3.5 text-purple-400" />
               </div>
               <h3 className="text-base font-semibold text-white tracking-tight">
-                AI 유물 복원
+                {t("landing.feature2.title", selectedLang)}
               </h3>
             </div>
             <p className="text-sm text-gray-400 leading-[1.8]">
-              세월에 닳고 손상된 유물의 원래 모습을 역사적 고증에 맞게
-              복원합니다.
+              {t("landing.feature2.cardDesc", selectedLang)}
             </p>
           </div>
         </div>
@@ -890,67 +916,67 @@ export default function LandingPage() {
                   borderRadius: "50%",
                   background:
                     "conic-gradient(from 0deg, transparent 260deg, rgba(52,211,153,0.18) 330deg, rgba(52,211,153,0.06) 360deg)",
-                  animation: discoveryActive
-                    ? "radar-sweep 2.2s linear infinite"
-                    : "none",
+                  /* Safari: conic-gradient 회전 애니메이션은 GPU 레이어 강제 필요 */
+                  willChange: "transform",
+                  transform: "translateZ(0)",
+                  animationName: discoveryActive ? "radar-sweep" : "none",
+                  animationDuration: "2.2s",
+                  animationTimingFunction: "linear",
+                  animationIterationCount: "infinite",
                 }}
               />
             </div>
 
-            {/* 유산 점들 */}
-            {HERITAGE_SITES.map((site, i) => (
+            {/* 유산 점들 — 레이더 스윕이 지나갈 때만 잠깐 나타났다 사라짐 */}
+            {HERITAGE_SITES.map((site) => (
               <div
-                key={i}
+                key={site.name}
                 className="absolute"
                 style={{
-                  left: site.x,
-                  top: site.y,
+                  left: `calc(50% + ${site.cx}px)`,
+                  top: `calc(50% + ${site.cy}px)`,
                   transform: "translate(-50%,-50%)",
-                  opacity: bento2Visible ? 1 : 0,
-                  transition: `opacity 0.5s ease ${site.delay}ms`,
                 }}
               >
-                {/* dot */}
+                {/* blip group — 스윕 주기(2.2s)에 맞춰 깜빡임, backwards로 첫 스윕 전엔 숨김 */}
+                {/* Safari: animation 단축속성 파싱 이슈 → 명시적 속성 사용 */}
                 <div
-                  className="w-2 h-2 rounded-full"
-                  style={{
-                    background: discoveryActive
-                      ? "rgba(52,211,153,0.95)"
-                      : "rgba(52,211,153,0.6)",
-                    boxShadow: discoveryActive
-                      ? "0 0 8px rgba(52,211,153,0.7)"
-                      : "0 0 5px rgba(52,211,153,0.45)",
-                    animation: discoveryActive
-                      ? `dot-pop 0.4s cubic-bezier(0.16,1,0.3,1) ${site.delay}ms both`
-                      : "none",
-                    transition: "background 0.3s ease, box-shadow 0.3s ease",
-                  }}
-                />
-                {/* 이름 라벨 */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "-3px",
-                    left: i % 2 === 0 ? "10px" : "auto",
-                    right: i % 2 !== 0 ? "10px" : "auto",
-                    whiteSpace: "nowrap",
-                    fontSize: "12px",
-                    color: "rgba(52,211,153,0.8)",
-                    letterSpacing: "0.04em",
-                    opacity: discoveryActive ? 1 : 0,
-                    transition: `opacity 0.4s ease ${site.delay + 150}ms`,
-                    pointerEvents: "none",
-                  }}
+                  style={discoveryActive ? {
+                    animationName: "radar-blip",
+                    animationDuration: "2.2s",
+                    animationTimingFunction: "linear",
+                    animationDelay: `${site.scanDelay}ms`,
+                    animationIterationCount: "infinite",
+                    animationFillMode: "backwards",
+                  } : { opacity: 0 }}
                 >
-                  {site.name}
-                  <span
+                  {/* dot */}
+                  <div
+                    className="w-2 h-2 rounded-full"
                     style={{
-                      color: "rgba(52,211,153,0.45)",
-                      marginLeft: "3px",
+                      background: "rgba(52,211,153,0.95)",
+                      boxShadow: "0 0 10px rgba(52,211,153,0.9), 0 0 20px rgba(52,211,153,0.4)",
+                    }}
+                  />
+                  {/* 이름 라벨 */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "-3px",
+                      left: site.cx < 0 ? "10px" : "auto",
+                      right: site.cx >= 0 ? "10px" : "auto",
+                      whiteSpace: "nowrap",
+                      fontSize: "11px",
+                      color: "rgba(52,211,153,0.9)",
+                      letterSpacing: "0.04em",
+                      pointerEvents: "none",
                     }}
                   >
-                    {site.dist}
-                  </span>
+                    {site.name}
+                    <span style={{ color: "rgba(52,211,153,0.5)", marginLeft: "3px" }}>
+                      {site.dist}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -996,7 +1022,7 @@ export default function LandingPage() {
                 }}
               >
                 <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                주변 탐색 중
+                {t("landing.scanning", selectedLang)}
               </div>
             </div>
           </div>
@@ -1010,12 +1036,11 @@ export default function LandingPage() {
                 <Compass className="w-3.5 h-3.5 text-emerald-400" />
               </div>
               <h3 className="text-base font-semibold text-white tracking-tight">
-                주변 유산 발견
+                {t("landing.feature3.title", selectedLang)}
               </h3>
             </div>
             <p className="text-sm text-gray-400 leading-[1.8]">
-              지금 서 있는 곳을 기준으로 걸어서 갈 수 있는 문화유산을
-              찾아드립니다.
+              {t("landing.feature3.cardDesc", selectedLang)}
             </p>
           </div>
         </div>
@@ -1094,7 +1119,7 @@ export default function LandingPage() {
             {/* 태그 — 타이핑 완료 후 fade-in */}
             <div className="absolute bottom-3 left-8 right-5 flex gap-1.5 flex-wrap">
               {textComplete &&
-                DIARY_DATA[diaryEntryIdx].tags.map((tag, i) => (
+                diaryData[diaryEntryIdx].tags.map((tag, i) => (
                   <span
                     key={tag}
                     className="text-[12px] px-2 py-0.5 rounded-full"
@@ -1110,26 +1135,6 @@ export default function LandingPage() {
                 ))}
             </div>
 
-            {/* AI 생성 뱃지 */}
-            <div
-              className="absolute top-4 right-5"
-              style={{
-                opacity: diaryActive ? 1 : 0,
-                transition: "opacity 0.5s ease",
-              }}
-            >
-              <div
-                className="flex items-center gap-1 px-2 py-1 rounded-full text-[12px]"
-                style={{
-                  background: "rgba(96,165,250,0.08)",
-                  border: "1px solid rgba(96,165,250,0.15)",
-                  color: "rgba(96,165,250,0.6)",
-                }}
-              >
-                <div className="w-1 h-1 rounded-full bg-blue-400 animate-pulse" />
-                작성 중
-              </div>
-            </div>
           </div>
 
           {/* 텍스트 영역 */}
@@ -1142,19 +1147,19 @@ export default function LandingPage() {
                 <BookOpen className="w-3.5 h-3.5 text-blue-400" />
               </div>
               <h3 className="text-base font-semibold text-white tracking-tight">
-                방문 다이어리
+                {t("landing.feature4.title", selectedLang)}
               </h3>
             </div>
             <p className="text-sm text-gray-400 leading-[1.8]">
-              오늘의 관람을 AI가 기억하고 감성적인 다이어리로 정리해 드립니다.
+              {t("landing.feature4.cardDesc", selectedLang)}
             </p>
           </div>
         </div>
 
         {/* ── 마퀴 스트립 ── */}
         <div ref={marqueeRef} style={rv(marqueeVisible)}>
-          <p className="text-[12px] text-gray-700 tracking-[0.25em] uppercase text-center mb-6">
-            탐험 가능한 공간
+          <p className="text-[12px] text-gray-400 tracking-[0.25em] uppercase text-center mb-6">
+            {t("landing.marqueeTitle", selectedLang)}
           </p>
           <div
             className="h-px w-full mb-6"
@@ -1174,14 +1179,14 @@ export default function LandingPage() {
               className="flex w-max"
               style={{ animation: "marquee 28s linear infinite" }}
             >
-              {[...MUSEUMS, ...MUSEUMS].map((name, i) => (
+              {[...museums, ...museums].map((name, i) => (
                 <span
                   key={i}
-                  className="text-[12px] text-gray-600 whitespace-nowrap flex items-center"
+                  className="text-[12px] text-gray-400 whitespace-nowrap flex items-center"
                   style={{ gap: "20px", paddingRight: "20px" }}
                 >
                   {name}
-                  <span className="w-[3px] h-[3px] rounded-full bg-gray-700 inline-block flex-shrink-0" />
+                  <span className="w-[3px] h-[3px] rounded-full bg-gray-500 inline-block flex-shrink-0" />
                 </span>
               ))}
             </div>

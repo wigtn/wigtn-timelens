@@ -23,9 +23,9 @@ function getPanelHeight(state: PanelState): string {
     case 'mini':
       return '140px';
     case 'expanded':
-      return '60dvh';
+      return '60vh';
     case 'fullscreen':
-      return '90dvh';
+      return '90vh';
   }
 }
 
@@ -134,7 +134,7 @@ export default function KnowledgePanel({
           height: isDragging
             ? `calc(${getPanelHeight(state)} + ${touchDelta}px)`
             : getPanelHeight(state),
-          maxHeight: '90dvh',
+          maxHeight: '90vh',
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

@@ -20,7 +20,7 @@ export default function DiaryShareClient({ diary }: Props) {
   }, [diary.id]);
 
   return (
-    <main className="h-dvh">
+    <main className="h-screen">
       <DiaryViewer diary={diary} onShare={handleShare} />
     </main>
   );

@@ -450,7 +450,7 @@ export default function MainPage() {
 
       {/* === Camera PIP === */}
       {isCameraOpen && (
-        <div className="shrink-0 mx-4 mb-2 relative rounded-2xl overflow-hidden" style={{ height: '28dvh' }}>
+        <div className="shrink-0 mx-4 mb-2 relative rounded-2xl overflow-hidden" style={{ height: '28vh' }}>
           <CameraView
             ref={cameraViewRef}
             isScanning={false}
