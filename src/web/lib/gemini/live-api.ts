@@ -201,9 +201,12 @@ export class LiveSession {
     // 마지막으로 인식된 유물명으로 편향 방지 프롬프트 생성
     // lastKnownArtifactName은 절대 지워지지 않으므로 항상 신뢰할 수 있음
     const prev = this.lastKnownArtifactName;
-    const biasPart = prev
+    const prevBias = prev
       ? `CRITICAL: Do NOT assume this is "${prev}". That was a completely different object from earlier in our conversation. This is a NEW, DIFFERENT object.`
       : '';
+    // 유명 유물 편향 방지 — 모델이 유명 조각상/유물로 기본값을 설정하는 경향 차단
+    const famousBias = `CRITICAL: Do NOT default to famous artworks like "Venus de Milo", "Winged Victory of Samothrace", "Discobolus", "David", or any other well-known piece unless you can clearly identify specific distinguishing features in THIS image. If uncertain, report what you ACTUALLY SEE (material, pose, condition, approximate size, style) and set confidence below 0.5.`;
+    const biasPart = [prevBias, famousBias].filter(Boolean).join('\n');
     const basePrompt = `[VISION TASK — FRESH IDENTIFICATION REQUIRED]\n${biasPart}\nLook ONLY at this specific image. Identify exactly what artifact, object, or building you actually see. Do NOT use prior conversation context — analyze solely the visual content of this image.\nCall recognize_artifact with what you observe.`.trim();
 
     const textPart = prompt

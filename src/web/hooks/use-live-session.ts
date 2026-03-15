@@ -240,16 +240,15 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
       const cleaned = cleanSttText(data.text);
       if (!cleaned) return;
 
-      // 카메라 켜져있으면 → 모든 발화에 현재 프레임 첨부 (3초 쿨다운)
-      // 카메라가 배경으로 깔려있는 동안 사용자의 모든 발화는 카메라 프레임 기준으로 처리
+      // 카메라 켜져있으면 → 오디오 스트림에 카메라 프레임 첨부 (3초 쿨다운)
+      // sendPhoto(새 텍스트 턴)가 아닌 sendVideoFrame(realtimeInput)으로 전송해야
+      // 오디오와 같은 턴으로 처리됨 → AI 응답 중복 방지
       if (refs.isCameraOpen.current) {
         if (Date.now() - refs.lastAutoCaptureTime.current > 3000) {
           const photo = refs.capturePhoto.current?.();
           if (photo) {
             refs.lastAutoCaptureTime.current = Date.now();
-            refs.onCaptureFlash.current?.();
-            setters.setIsRecognizing(true);
-            refs.liveSession.current?.sendPhoto(photo, cleaned);
+            refs.liveSession.current?.sendVideoFrame(photo);
           }
         }
       } else if (isWhatIsThisQuery(cleaned) && Date.now() - refs.lastAutoCaptureTime.current > 5000) {

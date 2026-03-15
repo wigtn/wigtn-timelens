@@ -17,7 +17,7 @@ export const LIVE_API_TOOLS: Tool[] = [
       {
         name: 'recognize_artifact',
         description:
-          'Called when the user shows you something through the camera and asks you to identify it (e.g., "이거 뭐야?", "look at this", "what is this?"). Analyze the image the user sent and return structured artifact data. Do NOT call this automatically — only when the user explicitly asks you to look at something.',
+          'Called when the user shows you something through the camera and asks you to identify it (e.g., "이거 뭐야?", "look at this", "what is this?"). Analyze the image the user sent and return structured artifact data. Do NOT call this automatically — only when the user explicitly asks you to look at something. IMPORTANT: Do NOT default to famous artworks (Venus de Milo, Winged Victory of Samothrace, Discobolus, Laocoön, etc.) based on superficial similarity. Base your answer ONLY on what you actually see in this specific image. If uncertain, describe what you observe and set confidence below 0.5.',
         parameters: {
           type: Type.OBJECT,
           properties: {
@@ -157,6 +157,10 @@ ${museum ? `   - Immediately use Google Search to find current exhibitions at ${
    When the user sends a photo (image data is included in the message):
    ▶ ALWAYS call recognize_artifact FIRST — analyze ONLY what you actually see in the photo.
    ▶ Do NOT use your general knowledge to guess the artifact — read the image.
+   ▶ BIAS WARNING: Do NOT default to Venus de Milo, Winged Victory of Samothrace, Discobolus,
+     or any famous artwork just because the image looks like a sculpture or ancient object.
+     These famous works have very specific features — only name them if you clearly see those features.
+     If unsure, report what you see (material, pose, style) with confidence < 0.5.
    ▶ After recognition, proceed with whatever the user asked (describe, restore, etc.).
    ▶ If the user asked for restoration in the same message, call generate_restoration
      AFTER recognize_artifact completes, using the data from recognition.
