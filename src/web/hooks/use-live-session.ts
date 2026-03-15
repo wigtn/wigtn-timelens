@@ -90,6 +90,33 @@ export function isWhatIsThisQuery(text: string): boolean {
   return WHAT_IS_THIS_PATTERNS.some((pattern) => pattern.test(text));
 }
 
+/**
+ * 복원 요청 키워드 감지.
+ * 카메라가 열려 있을 때 이 패턴이 감지되면 현재 프레임을 같이 전송 →
+ * Gemini가 실제 이미지를 기반으로 유물을 정확히 인식하고 복원.
+ */
+const RESTORATION_PATTERNS = [
+  /복원/,
+  /원래\s*(?:어떻게|모습|형태)/,
+  /옛날\s*(?:모습|형태)/,
+  /실제\s*(?:모습|형태|이미지)/,
+  /이미지\s*(?:만들|생성|보여|보고)/,
+  /(?:만들어|생성해|보여)\s*줘/,
+  /restore/i,
+  /original\s*(?:look|form|appearance)/i,
+  /what.*look.*like/i,
+  /show\s*me/i,
+  /generate.*image/i,
+  /復元/,
+  /修復/,
+  /元の姿/,
+  /見せて/,
+];
+
+export function isRestorationQuery(text: string): boolean {
+  return RESTORATION_PATTERNS.some((pattern) => pattern.test(text));
+}
+
 // ── 이벤트 핸들러 팩토리 ────────────────────────────────────
 
 interface SessionRefs {
@@ -106,6 +133,8 @@ interface SessionRefs {
   openCameraAndCapture: React.RefObject<((prompt: string) => void) | null>;
   isCameraOpen: React.RefObject<boolean>;
   lastAutoCaptureTime: React.RefObject<number>;
+  /** 카메라 자동 캡처 후 compact 모드로 전환하는 콜백 */
+  onCameraCompact: React.RefObject<(() => void) | null>;
 }
 
 interface SessionSetters {
@@ -119,11 +148,13 @@ interface SessionSetters {
   setDiscoverySites: React.Dispatch<React.SetStateAction<NearbyPlace[]>>;
   setDiaryResult: React.Dispatch<React.SetStateAction<{ diaryId: string; title: string } | null>>;
   setBeforeImage: React.Dispatch<React.SetStateAction<string | null>>;
+  setIsRecognizing: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSessionEvents {
   return {
     onArtifactRecognized: (summary) => {
+      setters.setIsRecognizing(false);
       setters.setCurrentArtifact(summary);
       refs.currentArtifact.current = summary;
       setters.setSessionState(prev => ({
@@ -209,24 +240,22 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
       const cleaned = cleanSttText(data.text);
       if (!cleaned) return;
 
-      // "이거 봐봐" / "이건 뭐야?" 감지 → 자동 캡처 (5초 쿨다운)
-      if (
-        isWhatIsThisQuery(cleaned) &&
-        Date.now() - refs.lastAutoCaptureTime.current > 5000
-      ) {
-        if (refs.isCameraOpen.current) {
-          // 카메라 이미 열림 → 즉시 캡처
+      // 카메라 켜져있으면 → 모든 발화에 현재 프레임 첨부 (3초 쿨다운)
+      // 카메라가 배경으로 깔려있는 동안 사용자의 모든 발화는 카메라 프레임 기준으로 처리
+      if (refs.isCameraOpen.current) {
+        if (Date.now() - refs.lastAutoCaptureTime.current > 3000) {
           const photo = refs.capturePhoto.current?.();
           if (photo) {
             refs.lastAutoCaptureTime.current = Date.now();
             refs.onCaptureFlash.current?.();
+            setters.setIsRecognizing(true);
             refs.liveSession.current?.sendPhoto(photo, cleaned);
           }
-        } else {
-          // 카메라 닫힘 → 자동으로 열고 캡처
-          refs.lastAutoCaptureTime.current = Date.now();
-          refs.openCameraAndCapture.current?.(cleaned);
         }
+      } else if (isWhatIsThisQuery(cleaned) && Date.now() - refs.lastAutoCaptureTime.current > 5000) {
+        // 카메라 꺼져있을 때 "이거 뭐야?" → 카메라 자동 열고 캡처
+        refs.lastAutoCaptureTime.current = Date.now();
+        refs.openCameraAndCapture.current?.(cleaned);
       }
 
       setters.setTranscript(prev => {
@@ -267,6 +296,8 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
       setters.setSessionState(prev => ({ ...prev, activeAgent: data.to }));
 
       if (data.to === 'restoration') {
+        // 새 복원 시작 — 이전 beforeImage 초기화 (이전 이미지 노출 방지)
+        setters.setBeforeImage(null);
         setters.setRestorationState({
           status: 'loading',
           progress: 0,
@@ -313,6 +344,9 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
           if (data.result.type === 'restoration') {
             setters.setRestorationState({ status: 'ready', data: data.result });
             setters.setBeforeImage(data.result.referenceImageUrl ?? null);
+            // currentArtifact는 여기서 초기화하지 않음.
+            // 복원 후 같은 유물 재복원/추가 대화가 가능해야 하고,
+            // 새 사진을 찍을 때 sendPhoto에서 자동 초기화됨.
           }
           break;
         case 'discover_nearby':
@@ -340,6 +374,13 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
 
     onTopicDetail: () => {
       // Topic detail은 transcript에 자동 추가됨
+    },
+
+    onRestorationModeKnown: (mode) => {
+      // loading state에 mode 추가 → 올바른 라벨 표시
+      setters.setRestorationState(prev =>
+        prev.status === 'loading' ? { ...prev, mode } : prev
+      );
     },
 
     onError: (error) => {
@@ -387,6 +428,7 @@ export function useLiveSession(): UseLiveSessionReturn {
   const [discoverySites, setDiscoverySites] = useState<NearbyPlace[]>([]);
   const [diaryResult, setDiaryResult] = useState<{ diaryId: string; title: string } | null>(null);
   const [beforeImage, setBeforeImage] = useState<string | null>(null);
+  const [isRecognizing, setIsRecognizing] = useState(false);
 
   // Refs
   const liveSessionRef = useRef<LiveSession | null>(null);
@@ -402,6 +444,7 @@ export function useLiveSession(): UseLiveSessionReturn {
   // ── Camera auto-capture refs (UI 콜백 브릿지) ──
   const isCameraOpenRef = useRef(false);
   const lastAutoCaptureTimeRef = useRef(0);
+  const onCameraCompactRef = useRef<(() => void) | null>(null);
   const capturePhotoRef = useRef<(() => string | null) | null>(null);
   const onCaptureFlashRef = useRef<(() => void) | null>(null);
   const openCameraAndCaptureRef = useRef<((prompt: string) => void) | null>(null);
@@ -493,11 +536,12 @@ export function useLiveSession(): UseLiveSessionReturn {
         openCameraAndCapture: openCameraAndCaptureRef,
         isCameraOpen: isCameraOpenRef,
         lastAutoCaptureTime: lastAutoCaptureTimeRef,
+        onCameraCompact: onCameraCompactRef,
       };
       const setters: SessionSetters = {
         setSessionState, setTranscript, setCurrentArtifact,
         setAudioState, setActiveAgent, setToolResult,
-        setRestorationState, setDiscoverySites, setDiaryResult, setBeforeImage,
+        setRestorationState, setDiscoverySites, setDiaryResult, setBeforeImage, setIsRecognizing,
       };
       const events = createSessionEvents(refs, setters);
 
@@ -641,8 +685,14 @@ export function useLiveSession(): UseLiveSessionReturn {
 
   const toggleCamera = useCallback((enabled: boolean) => {
     isCameraOpenRef.current = enabled;
-    // 카메라 ON/OFF는 프리뷰만 제어 — 인식은 캡처 버튼(sendPhoto)으로만 트리거
-    if (!enabled) {
+    if (enabled) {
+      // 카메라 켜질 때 1fps 프레임 루프 시작 —
+      // sendRealtimeInput으로 AI에 실시간 비주얼 컨텍스트 제공.
+      // AI가 대화 히스토리가 아닌 현재 카메라 피드를 기반으로 응답하게 됨.
+      cameraCaptureRef.current?.startFrameLoop((frame) => {
+        liveSessionRef.current?.sendVideoFrame(frame);
+      });
+    } else {
       cameraCaptureRef.current?.stopFrameLoop();
     }
   }, []);
@@ -657,6 +707,7 @@ export function useLiveSession(): UseLiveSessionReturn {
   }, []);
 
   const sendTextMessage = useCallback((text: string) => {
+    audioPlaybackRef.current?.flush();
     liveSessionRef.current?.sendText(text);
     setTranscript(prev => [
       ...prev,
@@ -665,7 +716,25 @@ export function useLiveSession(): UseLiveSessionReturn {
   }, []);
 
   const sendPhoto = useCallback((imageBase64: string, prompt?: string) => {
+    audioPlaybackRef.current?.flush();
+    setIsRecognizing(true);
     liveSessionRef.current?.sendPhoto(imageBase64, prompt);
+  }, []);
+
+  const sendPhotoMessage = useCallback((imageBase64: string, prompt?: string) => {
+    audioPlaybackRef.current?.flush();
+    setIsRecognizing(true);
+    liveSessionRef.current?.sendPhoto(imageBase64, prompt);
+    if (prompt) {
+      setTranscript(prev => [
+        ...prev,
+        { id: `u-${Date.now()}`, role: 'user', text: prompt, timestamp: Date.now() },
+      ]);
+    }
+  }, []);
+
+  const sendGreeting = useCallback(() => {
+    liveSessionRef.current?.sendGreeting();
   }, []);
 
   const clearToolResult = useCallback(() => {
@@ -694,12 +763,13 @@ export function useLiveSession(): UseLiveSessionReturn {
     isFallbackMode: sessionState.isFallbackMode,
     connect, disconnect,
     toggleMic, toggleCamera, interrupt,
-    requestTopicDetail, sendTextMessage, sendPhoto,
+    requestTopicDetail, sendTextMessage, sendPhoto, sendPhotoMessage, sendGreeting,
     currentArtifact, transcript, audioState, activeAgent,
     toolResult, restorationState, discoverySites, diaryResult, clearToolResult,
-    beforeImage,
+    beforeImage, isRecognizing,
     capturePhotoRef,
     onCaptureFlashRef,
     openCameraAndCaptureRef,
+    onCameraCompactRef,
   };
 }

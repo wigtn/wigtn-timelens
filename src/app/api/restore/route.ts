@@ -5,6 +5,8 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+
+export const maxDuration = 120; // 이미지 생성 최대 2분
 import { z } from 'zod';
 import { getGeminiClient } from '@back/lib/gemini/client';
 import {

@@ -684,6 +684,7 @@ export default function LandingPage() {
                     ? "rgba(52,211,153,0.95)"
                     : "rgba(212,165,116,0.85)",
                   backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
                   opacity: artifactVisible ? 1 : 0,
                   transition:
                     "opacity 0.28s ease, background 0.3s ease, border 0.3s ease, color 0.3s ease",
@@ -839,6 +840,7 @@ export default function LandingPage() {
                   border: "1px solid rgba(167,139,250,0.3)",
                   color: "rgba(167,139,250,0.9)",
                   backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
                 }}
               >
                 <Sparkles className="w-3 h-3" />

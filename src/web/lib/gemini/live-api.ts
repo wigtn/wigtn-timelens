@@ -21,7 +21,11 @@ import { LIVE_API_TOOLS, getSystemInstruction } from '@shared/gemini/tools';
  * 줄바꿈/탭은 유지.
  */
 function sanitizeTranscript(text: string): string {
-  return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim();
+  return text
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    // Gemini native audio sometimes outputs "<ctrl46>", "<ctrl10>" etc. as literal text tokens
+    .replace(/<ctrl\d+>/gi, '')
+    .trim();
 }
 
 /**
@@ -67,6 +71,13 @@ export class LiveSession {
   private visits: DiaryVisitInput[] = [];
   private lastCameraFrame: string | null = null;
   private isInterrupted = false;
+  /** 마지막으로 인식된 유물 이름 — 절대 지워지지 않음. sendPhoto의 편향 방지용 */
+  private lastKnownArtifactName: string | null = null;
+  /** 복원 진행 중 플래그 — 중복 호출 방지 */
+  private restorationInProgress = false;
+  /** 마지막 복원 완료 시각 — 단기 재복원 방지 */
+  private lastRestorationCompletedAt = 0;
+  private static readonly RESTORATION_COOLDOWN_MS = 20_000;
 
   constructor(events: LiveSessionEvents) {
     this.events = events;
@@ -130,7 +141,10 @@ export class LiveSession {
     this.ai = null;
     this.visits = [];
     this.lastCameraFrame = null;
+    this.lastKnownArtifactName = null;
     this.isInterrupted = false;
+    this.restorationInProgress = false;
+    this.lastRestorationCompletedAt = 0;
     this.updateStatus('disconnected');
   }
 
@@ -159,6 +173,11 @@ export class LiveSession {
       console.warn('[LiveSession] sendText blocked — status:', this.state.status, 'session:', !!this.session);
       return;
     }
+    // 말하는 중이면 인터럽트
+    if (this.state.audioState === 'speaking') {
+      this.isInterrupted = true;
+      this.updateAudioState('idle');
+    }
     this.session.sendClientContent({
       turns: [{ role: 'user', parts: [{ text }] }],
       turnComplete: true,
@@ -167,14 +186,47 @@ export class LiveSession {
 
   sendPhoto(base64Jpeg: string, prompt?: string): void {
     if (!this.session || this.state.status !== 'connected') return;
+    // 말하는 중이면 인터럽트
+    if (this.state.audioState === 'speaking') {
+      this.isInterrupted = true;
+      this.updateAudioState('idle');
+    }
+    // 프레임 저장 + beforeImage 즉시 설정
+    // (recognize_artifact를 건너뛰고 generate_restoration이 직접 호출돼도 beforeImage 확보)
+    this.lastCameraFrame = base64Jpeg;
+    this.state.beforeImage = `data:image/jpeg;base64,${base64Jpeg}`;
+    // 새 사진 = 새로운 인식 → currentArtifact 초기화 (이전 유물 재사용 방지)
+    this.state.currentArtifact = null;
+
+    // 마지막으로 인식된 유물명으로 편향 방지 프롬프트 생성
+    // lastKnownArtifactName은 절대 지워지지 않으므로 항상 신뢰할 수 있음
+    const prev = this.lastKnownArtifactName;
+    const biasPart = prev
+      ? `CRITICAL: Do NOT assume this is "${prev}". That was a completely different object from earlier in our conversation. This is a NEW, DIFFERENT object.`
+      : '';
+    const basePrompt = `[VISION TASK — FRESH IDENTIFICATION REQUIRED]\n${biasPart}\nLook ONLY at this specific image. Identify exactly what artifact, object, or building you actually see. Do NOT use prior conversation context — analyze solely the visual content of this image.\nCall recognize_artifact with what you observe.`.trim();
+
+    const textPart = prompt
+      ? `[VISION TASK — ANALYZE THIS IMAGE]\n${biasPart}\nUser request: "${prompt}"\nLook at the attached image and identify what you see. Do NOT rely on prior context.`.trim()
+      : basePrompt;
+
     this.session.sendClientContent({
       turns: [{
         role: 'user',
         parts: [
-          { text: prompt || 'I want to show you this — take a look and tell me about it!' },
+          { text: textPart },
           { inlineData: { mimeType: 'image/jpeg', data: base64Jpeg } },
         ],
       }],
+      turnComplete: true,
+    });
+  }
+
+  /** 세션 시작 시 AI 인사 트리거 — transcript에 추가하지 않음 */
+  sendGreeting(): void {
+    if (!this.session || this.state.status !== 'connected') return;
+    this.session.sendClientContent({
+      turns: [{ role: 'user', parts: [{ text: '(session started)' }] }],
       turnComplete: true,
     });
   }
@@ -257,8 +309,9 @@ export class LiveSession {
       this.updateAudioState('idle');
     }
 
-    // 4. 인터럽션
+    // 4. 인터럽션 — 서버가 인터럽트를 확인했으므로 새 응답 오디오 재생 허용
     if (message.serverContent?.interrupted) {
+      this.isInterrupted = false;
       this.updateAudioState('listening');
     }
 
@@ -381,10 +434,12 @@ export class LiveSession {
 
     this.state.currentArtifact = summary;
     this.state.visitCount += 1;
-    // 인식 시점의 카메라 프레임을 beforeImage로 저장
-    this.state.beforeImage = this.lastCameraFrame
-      ? `data:image/jpeg;base64,${this.lastCameraFrame}`
-      : null;
+    // 인식된 유물명 기억 — sendPhoto 편향 방지용 (절대 지우지 않음)
+    this.lastKnownArtifactName = summary.name;
+    // beforeImage는 sendPhoto에서 이미 설정됨. 혹시 sendPhoto 없이 recognition이 오면 여기서도 보완
+    if (!this.state.beforeImage && this.lastCameraFrame) {
+      this.state.beforeImage = `data:image/jpeg;base64,${this.lastCameraFrame}`;
+    }
     this.events.onArtifactRecognized(summary);
 
     this.session?.sendToolResponse({
@@ -399,10 +454,68 @@ export class LiveSession {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleRestoration(fc: any): Promise<void> {
-    this.switchAgent('restoration', '복원 이미지를 생성합니다');
+    // 중복 호출 방지: 복원이 이미 진행 중이거나 완료 후 쿨다운 내에 있으면 무시
+    if (this.restorationInProgress) {
+      this.sendToolErrorResponse(fc.id, fc.name, 'Restoration already in progress');
+      this.pendingToolCalls.delete(fc.id);
+      return;
+    }
+    const timeSinceLast = Date.now() - this.lastRestorationCompletedAt;
+    if (timeSinceLast < LiveSession.RESTORATION_COOLDOWN_MS) {
+      this.sendToolErrorResponse(fc.id, fc.name, `Restoration on cooldown — ${Math.ceil((LiveSession.RESTORATION_COOLDOWN_MS - timeSinceLast) / 1000)}s remaining`);
+      this.pendingToolCalls.delete(fc.id);
+      return;
+    }
+
+    // artifact_name / era가 누락된 경우 currentArtifact 데이터로 보완
+    const artifactName: string = fc.args.artifact_name || this.state.currentArtifact?.name || '';
+    const era: string = fc.args.era || this.state.currentArtifact?.era || '';
+
+    if (!artifactName || !era) {
+      this.sendToolErrorResponse(fc.id, fc.name, 'No artifact identified yet — please show the camera first');
+      this.pendingToolCalls.delete(fc.id);
+      return;
+    }
+
+    this.restorationInProgress = true;
+
+    this.switchAgent('restoration', '이미지를 불러옵니다');
     this.updateAudioState('generating');
 
-    // Capture current camera frame as before-image
+    // beforeImage 확보 우선순위:
+    // 1. sendPhoto / recognize_artifact 에서 이미 세팅된 값
+    // 2. 1fps 프레임 루프가 갱신한 lastCameraFrame
+    // 3. onCaptureFrame 즉시 캡처 (프레임 루프 미실행 초기 상태 대비)
+    if (!this.state.beforeImage) {
+      const frame = this.lastCameraFrame ?? this.onCaptureFrame?.();
+      if (frame) {
+        this.state.beforeImage = `data:image/jpeg;base64,${frame}`;
+        this.lastCameraFrame = frame;
+      }
+    }
+    // AI가 명시한 mode 파라미터를 최우선으로 사용.
+    // mode="image_search" → 실제 사진 검색 (실제 모습, 이미지 검색, 다른 자료 등)
+    // mode="restoration" or 미지정 → AI 복원 (카메라 이미지 필요 시 beforeImage 확인)
+    const requestedMode = fc.args.mode as 'restoration' | 'image_search' | undefined;
+    const hasBeforeImage = !!this.state.beforeImage;
+
+    if (requestedMode === 'image_search') {
+      // 이미지 검색 명시 요청 — beforeImage 유무와 무관하게 검색 경로
+      this.events.onRestorationModeKnown?.('image_search');
+      await this._handleImageSearch(fc, artifactName, era);
+    } else if (requestedMode === 'restoration' || hasBeforeImage) {
+      // AI 복원 명시 요청, 또는 카메라 이미지 있음 → 복원 경로
+      this.events.onRestorationModeKnown?.('restoration');
+      await this._handleRestorationGenerate(fc, artifactName, era);
+    } else {
+      // 모드 미지정 + 이미지 없음 → 이미지 검색 폴백
+      this.events.onRestorationModeKnown?.('image_search');
+      await this._handleImageSearch(fc, artifactName, era);
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async _handleRestorationGenerate(fc: any, artifactName: string, era: string): Promise<void> {
     const beforeFrame = this.onCaptureFrame?.();
     const referenceImageUrl = beforeFrame
       ? `data:image/jpeg;base64,${beforeFrame}`
@@ -413,8 +526,8 @@ export class LiveSession {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          artifactName: fc.args.artifact_name,
-          era: fc.args.era,
+          artifactName,
+          era,
           artifactType: fc.args.artifact_type,
           damageDescription: fc.args.damage_description,
           isArchitecture: ['building', 'monument'].includes(fc.args.artifact_type),
@@ -427,21 +540,25 @@ export class LiveSession {
 
       if (!response.ok || !result.success) {
         const errMsg = result.error || `HTTP ${response.status}`;
-        const errCode = result.code || 'RESTORATION_FAILED';
         const retryable = result.retryable !== false;
         this.sendToolErrorResponse(fc.id, fc.name, errMsg);
-        this.emitError(errCode, errMsg, retryable, retryable ? 'retry' : 'manual');
+        this.emitError('RESTORATION_FAILED', errMsg, retryable, retryable ? 'retry' : 'manual');
         return;
       }
+
+      // beforeImage / currentArtifact는 여기서 초기화하지 않음.
+      // - beforeImage: 같은 유물 재복원 요청 시 재사용 가능. 새 사진 찍으면 sendPhoto에서 교체.
+      // - currentArtifact: 복원 후 추가 대화(재복원, 설명 요청 등) 지원. sendPhoto에서 초기화.
 
       this.events.onToolResult({
         tool: 'generate_restoration',
         result: {
           type: 'restoration',
+          mode: 'restoration',
           imageUrl: result.imageUrl,
           description: result.description,
-          artifactName: fc.args.artifact_name,
-          era: fc.args.era,
+          artifactName,
+          era,
           referenceImageUrl,
         },
       });
@@ -454,8 +571,55 @@ export class LiveSession {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Network error';
       this.sendToolErrorResponse(fc.id, fc.name, msg);
-      this.emitError('NETWORK_ERROR', msg, true, 'retry');
+      this.emitError('RESTORATION_FAILED', msg, true, 'retry');
     } finally {
+      this.restorationInProgress = false;
+      this.lastRestorationCompletedAt = Date.now();
+      this.pendingToolCalls.delete(fc.id);
+      this.scheduleAgentReturn();
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async _handleImageSearch(fc: any, artifactName: string, era: string): Promise<void> {
+    // 영어 이름 우선 — Wikipedia 검색 정확도를 위해 artifact_name_en 필드 사용
+    const searchName: string = fc.args.artifact_name_en || artifactName;
+    try {
+      const params = new URLSearchParams({ artifactName: searchName, era });
+      const response = await fetch(`/api/image-search?${params.toString()}`);
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        // 이미지를 찾지 못한 경우 — AI에게 에러 반환하고 음성으로 안내하도록
+        this.sendToolErrorResponse(fc.id, fc.name, `Image not found for "${artifactName}"`);
+        this.emitError('RESTORATION_FAILED', `이미지를 찾을 수 없습니다: ${artifactName}`, false, 'manual');
+        return;
+      }
+
+      this.events.onToolResult({
+        tool: 'generate_restoration',
+        result: {
+          type: 'restoration',
+          mode: 'image_search',
+          imageUrl: result.imageUrl,
+          description: result.description || `${artifactName} (${era})`,
+          artifactName,
+          era,
+        },
+      });
+      this.session?.sendToolResponse({
+        functionResponses: [{
+          id: fc.id, name: fc.name,
+          response: { status: 'success', imageUrl: result.imageUrl },
+        }],
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Network error';
+      this.sendToolErrorResponse(fc.id, fc.name, msg);
+      this.emitError('RESTORATION_FAILED', msg, true, 'retry');
+    } finally {
+      this.restorationInProgress = false;
+      this.lastRestorationCompletedAt = Date.now();
       this.pendingToolCalls.delete(fc.id);
       this.scheduleAgentReturn();
     }

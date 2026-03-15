@@ -45,6 +45,8 @@ export interface LiveSessionEvents {
   onToolResult: (data: ToolResultData) => void;
   onTopicDetail: (data: TopicDetailData) => void;
   onError: (error: AppError) => void;
+  /** 복원 모드 확정 시 — loading 상태 라벨 업데이트용 */
+  onRestorationModeKnown?: (mode: 'restoration' | 'image_search') => void;
 }
 
 export interface TranscriptData {
@@ -134,6 +136,8 @@ export interface UseLiveSessionReturn {
   requestTopicDetail: (topicId: string, topicLabel: string) => void;
   sendTextMessage: (text: string) => void;
   sendPhoto: (imageBase64: string, prompt?: string) => void;
+  sendPhotoMessage: (imageBase64: string, prompt?: string) => void;
+  sendGreeting: () => void;
   currentArtifact: ArtifactSummary | null;
   transcript: TranscriptChunk[];
   audioState: AudioState;
@@ -146,12 +150,16 @@ export interface UseLiveSessionReturn {
   clearToolResult: () => void;
   /** 인식 시점 카메라 캡처 (data:image/jpeg;base64,...) */
   beforeImage: string | null;
+  /** sendPhoto 후 recognize_artifact 응답 올 때까지 true — 카메라 스캔 애니메이션용 */
+  isRecognizing: boolean;
   /** UI 카메라 캡처 함수 ref — CameraView 연결용 (auto-capture) */
   capturePhotoRef: React.RefObject<(() => string | null) | null>;
   /** 캡처 시 셔터 플래시 콜백 ref — auto-capture에서도 시각 피드백 제공 */
   onCaptureFlashRef: React.RefObject<(() => void) | null>;
   /** 카메라 닫혀있을 때 자동으로 열고 캡처하는 콜백 ref (음성 트리거) */
   openCameraAndCaptureRef: React.RefObject<((prompt: string) => void) | null>;
+  /** 자동 캡처 후 카메라 compact 모드로 전환하는 콜백 ref */
+  onCameraCompactRef: React.RefObject<(() => void) | null>;
 }
 
 export interface TranscriptChunk {

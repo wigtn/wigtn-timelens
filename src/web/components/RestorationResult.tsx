@@ -64,45 +64,54 @@ export function RestorationResult({
     return null;
   }
 
-  // loading → 프로그레스 바 + 시뮬레이션
+  // loading → 미니멀 스트립
   if (state.status === 'loading') {
     return (
-      <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl p-6">
-        {/* 펄스 점 3개 */}
-        <div className="flex gap-2 justify-center mb-4">
-          <div
-            className="w-3 h-3 rounded-full bg-amber-400 animate-pulse"
-            style={{ animationDelay: '0ms' }}
-          />
-          <div
-            className="w-3 h-3 rounded-full bg-amber-400 animate-pulse"
-            style={{ animationDelay: '200ms' }}
-          />
-          <div
-            className="w-3 h-3 rounded-full bg-amber-400 animate-pulse"
-            style={{ animationDelay: '400ms' }}
-          />
+      <div className="flex flex-col gap-2 py-2 animate-[fadeInUp_0.4s_ease-out_forwards]">
+        <div className="flex items-center gap-2.5 px-1">
+          {/* 얇은 회전 링 */}
+          <div style={{
+            width: 13, height: 13, borderRadius: '50%', flexShrink: 0,
+            border: '1.5px solid rgba(212,165,116,0.18)',
+            borderTopColor: 'rgba(212,165,116,0.85)',
+            animation: 'tl-spin 0.85s linear infinite',
+          }} />
+          <span
+            className="text-[11px] font-medium truncate flex-1"
+            style={{ color: 'rgba(255,255,255,0.5)', letterSpacing: '0.01em' }}
+          >
+            {state.artifactName}
+          </span>
+          <span className="text-[10px] shrink-0" style={{ color: 'rgba(212,165,116,0.6)' }}>
+            {state.era}
+          </span>
         </div>
-
-        {/* 복원 시대 표시 */}
-        <p className="text-center text-sm text-gray-300 mb-3">
-          {t('restoration.restoringTo')}{' '}
-          <span className="text-amber-400 font-semibold">{state.era}</span>
-          ...
-        </p>
-
-        {/* 프로그레스 바 */}
-        <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden mb-3">
+        {/* 앰버 shimmer 프로그레스 바 */}
+        <div
+          className="mx-1 rounded-full overflow-hidden relative"
+          style={{ height: 2, background: 'rgba(255,255,255,0.05)' }}
+        >
           <div
-            className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all duration-300 ease-out"
-            style={{ width: `${simulatedProgress}%` }}
+            className="h-full rounded-full"
+            style={{
+              width: `${simulatedProgress}%`,
+              background: 'linear-gradient(90deg, rgba(212,165,116,0.45), rgba(212,165,116,0.9))',
+              transition: 'width 0.28s ease-out',
+            }}
           />
+          <div style={{
+            position: 'absolute', top: 0, left: 0, height: '100%', width: '35%',
+            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)',
+            animation: 'tl-shimmer 2s ease-in-out infinite',
+          }} />
         </div>
-
-        {/* 유물 이름 */}
-        <p className="text-center text-xs text-gray-500">
-          {state.artifactName}
-        </p>
+        <style>{`
+          @keyframes tl-spin { to { transform: rotate(360deg); } }
+          @keyframes tl-shimmer {
+            0% { transform: translateX(-150%); }
+            100% { transform: translateX(450%); }
+          }
+        `}</style>
       </div>
     );
   }
@@ -130,26 +139,28 @@ export function RestorationResult({
   // ready → BeforeAfterSlider
   return (
     <div
-      className={`flex flex-col gap-4 transition-opacity duration-[400ms] ${
+      className={`flex flex-col gap-3 transition-opacity duration-[400ms] ${
         isTransitioning ? 'opacity-0' : 'opacity-100'
       }`}
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-bold text-white">
+      {/* 헤더: 유물명 + 닫기 */}
+      <div className="flex items-center justify-between px-0.5">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold text-white leading-snug truncate">
             {state.data.artifactName}
           </h3>
-          <p className="text-sm text-gray-300">
-            {t('restoration.restored')} {state.data.era}
+          <p className="text-[11px] mt-0.5" style={{ color: 'rgba(212,165,116,0.75)' }}>
+            {state.data.era}
           </p>
         </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/20 transition-colors shrink-0 mt-0.5"
+            className="w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ml-2"
+            style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.4)' }}
             aria-label="Close restoration result"
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
               <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
           </button>
@@ -162,7 +173,6 @@ export function RestorationResult({
         era={state.data.era}
         description={state.data.description}
         onSave={onSave ?? (() => {})}
-        onShare={onShare ?? (() => {})}
       />
     </div>
   );

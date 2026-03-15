@@ -685,11 +685,11 @@ const translations = {
     hi: 'पुनः प्रयास',
   },
   'restoration.restored': {
-    ko: '복원됨:',
-    en: 'Restored:',
-    ja: '復元済み:',
-    zh: '已修复:',
-    hi: 'पुनर्स्थापित:',
+    ko: '복원 완료',
+    en: 'Restored',
+    ja: '復元完了',
+    zh: '已修复',
+    hi: 'पुनर्स्थापित',
   },
   'restoration.share': {
     ko: '공유',
@@ -715,6 +715,20 @@ const translations = {
     ja: '生成中',
     zh: '生成中',
     hi: 'बना रहा है',
+  },
+  'audio.restoring': {
+    ko: '복원 생성 중',
+    en: 'Restoring',
+    ja: '復元中',
+    zh: '复原中',
+    hi: 'पुनर्स्थापित कर रहा है',
+  },
+  'audio.searching': {
+    ko: '이미지 검색 중',
+    en: 'Searching image',
+    ja: '画像検索中',
+    zh: '搜索图片中',
+    hi: 'छवि खोज रहा है',
   },
 
   // ── Error Boundary ──────────────────────────────────────────

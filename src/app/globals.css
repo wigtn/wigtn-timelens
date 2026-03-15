@@ -74,6 +74,31 @@
     0% { opacity: 0; }
     100% { opacity: 1; }
   }
+
+  /* Dynamic Island — inner card breathing (speaking) */
+  @keyframes di-speak-inner {
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.010); }
+  }
+  /* Dynamic Island — inner card breathing (listening) */
+  @keyframes di-listen-inner {
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.006); }
+  }
+  /* Dynamic Island — generating: amber glow pulse */
+  @keyframes di-generate-glow {
+    0%, 100% {
+      box-shadow: 0 0 12px rgba(212,165,116,0.10), 0 0 0 1px rgba(212,165,116,0.20);
+    }
+    50% {
+      box-shadow: 0 0 44px rgba(212,165,116,0.38), 0 0 0 1.5px rgba(212,165,116,0.55);
+    }
+  }
+  /* Dynamic Island — scanning beam for AudioVisualizer generating */
+  @keyframes di-scan {
+    0%   { transform: translateX(-180%); }
+    100% { transform: translateX(420%); }
+  }
 }
 
 @layer base {
@@ -126,24 +151,24 @@
     border-color: var(--color-border);
   }
 
+  /* Safari: html에 overflow:hidden이면 fixed 내부 스크롤 막힘 → html은 height만 */
+  html {
+    height: 100%;
+    /* iOS Safari: prevent elastic scroll on html */
+    overflow: hidden;
+  }
+
   body {
     background-color: var(--color-canvas);
     color: var(--color-foreground);
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  /* Safari: html에 overflow:hidden을 걸면 fixed 컨테이너 내부 스크롤이 막힘 → html은 height만 */
-  html {
+    /* safe-area는 각 page의 fixed 컨테이너에서 처리 — body에 두면 fixed children과 이중 계산 */
     height: 100%;
-  }
-
-  body {
-    height: 100%;
+    /* iOS Safari: body overflow hidden + position fixed 조합이 안정적 */
     overflow: hidden;
-    /* iOS Safari 모멘텀 스크롤 */
+    position: fixed;
+    width: 100%;
     -webkit-overflow-scrolling: touch;
   }
 }
@@ -166,6 +191,13 @@
 .overflow-y-auto,
 .overflow-y-scroll {
   -webkit-overflow-scrolling: touch;
+}
+
+/* Safari: backdrop-filter needs -webkit- prefix */
+.glass-strong,
+[style*="backdropFilter"],
+[style*="backdrop-filter"] {
+  -webkit-backdrop-filter: var(--tw-backdrop-blur, blur(12px));
 }
 
 /* 스크롤바 숨기기 */
@@ -192,6 +224,12 @@
   66% { transform: translate(-20px, 15px) scale(0.95); }
 }
 
+/* Safari: clip-path needs -webkit-clip-path prefix for Safari < 16 */
+[style*="clipPath"],
+[style*="clip-path"] {
+  -webkit-clip-path: inherit;
+}
+
 /* RestorationOverlay 스캔라인 애니메이션 */
 @keyframes scanline {
   0% { top: -2px; }
@@ -206,6 +244,17 @@
   from {
     opacity: 0;
     transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;
@@ -447,6 +496,39 @@
 @keyframes vt-new {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+@keyframes restorationReveal {
+  0%   { opacity: 0; transform: translateY(24px) scale(0.96); filter: blur(4px); }
+  60%  { opacity: 1; filter: blur(0px); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0px); }
+}
+
+/* ── 유물 인식(recognition) 오버레이 ── */
+@keyframes recog-border {
+  0%   { opacity: 1; }
+  60%  { opacity: 0.4; }
+  100% { opacity: 0; }
+}
+@keyframes recog-corner {
+  0%   { transform: scale(0) rotate(-8deg); opacity: 0; }
+  70%  { transform: scale(1.12) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes recog-ring-expand {
+  0%   { transform: scale(0.4); opacity: 0.9; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+@keyframes recog-card-lifecycle {
+  0%   { transform: scale(0.5); opacity: 0; }
+  18%  { transform: scale(1.04); opacity: 1; }
+  25%  { transform: scale(1); opacity: 1; }
+  78%  { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.88); opacity: 0; }
+}
+@keyframes recog-badge-drop {
+  from { transform: translateY(-18px) scale(0.8); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 /* Reduced motion */

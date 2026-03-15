@@ -38,7 +38,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} ${bricolage.variable}`}>
-      <body className="font-sans bg-black text-white antialiased">
+      <body className="font-sans antialiased">
         {children}
       </body>
     </html>

@@ -18,12 +18,17 @@ function getBarHeight(state: AudioState, audioLevel: number, index: number): num
     case 'idle':
       return 2;
     case 'listening': {
-      const wave = Math.sin((index / BAR_COUNT) * Math.PI * 2 + Date.now() / 200);
-      return 2 + audioLevel * 24 * (0.5 + 0.5 * Math.abs(wave));
+      const t = Date.now() / 180;
+      const wave = Math.sin((index / BAR_COUNT) * Math.PI * 2.5 + t);
+      return 2 + audioLevel * 28 * (0.4 + 0.6 * Math.abs(wave));
     }
     case 'speaking': {
-      const aiWave = Math.sin((index / BAR_COUNT) * Math.PI * 3 + Date.now() / 150);
-      return 4 + 20 * (0.5 + 0.5 * Math.abs(aiWave));
+      const t = Date.now() / 110;
+      // 중앙 집중형 — 가운데 바가 더 크게
+      const center = 1 - Math.abs(index - BAR_COUNT / 2) / (BAR_COUNT / 2) * 0.55;
+      const wave1 = Math.sin((index / BAR_COUNT) * Math.PI * 4 + t);
+      const wave2 = Math.sin((index / BAR_COUNT) * Math.PI * 2.2 + t * 0.7);
+      return 3 + 26 * center * (0.45 + 0.55 * Math.abs(wave1 * 0.65 + wave2 * 0.35));
     }
     case 'generating':
       return 2;
@@ -41,7 +46,7 @@ function getBarColor(state: AudioState): string {
   }
 }
 
-export default function AudioVisualizer({ state, audioLevel = 0 }: AudioVisualizerProps) {
+export default function AudioVisualizer({ state, audioLevel = 0, generatingLabel }: AudioVisualizerProps) {
   const { t } = useT();
   const containerRef = useRef<HTMLDivElement>(null);
   const animFrameRef = useRef<number>(0);
@@ -74,9 +79,34 @@ export default function AudioVisualizer({ state, audioLevel = 0 }: AudioVisualiz
 
   if (state === 'generating') {
     return (
-      <div className="flex items-center justify-center h-6 gap-2">
-        <div className="w-4 h-4 border-2 border-timelens-gold/40 border-t-timelens-gold rounded-full animate-spin" />
-        <span className="text-[10px] text-gray-500 tracking-wide">{t('audio.generating')}</span>
+      <div
+        className="relative flex items-center justify-center overflow-hidden rounded-xl"
+        style={{
+          height: 32,
+          background: 'rgba(212,165,116,0.06)',
+          border: '1px solid rgba(212,165,116,0.22)',
+        }}
+      >
+        {/* 스캐닝 빔 */}
+        <div style={{
+          position: 'absolute', top: 0, bottom: 0,
+          width: '35%',
+          background: 'linear-gradient(90deg, transparent, rgba(212,165,116,0.28), transparent)',
+          animation: 'di-scan 1.5s cubic-bezier(0.4,0,0.6,1) infinite',
+        }} />
+        {/* 링 + 텍스트 */}
+        <div className="relative z-10 flex items-center gap-2">
+          <div style={{
+            width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
+            border: '1.5px solid rgba(212,165,116,0.2)',
+            borderTopColor: '#D4A574',
+            animation: 'tl-spin 0.75s linear infinite',
+          }} />
+          <span style={{ color: 'rgba(212,165,116,0.82)', fontSize: '10px', letterSpacing: '0.06em', fontWeight: 500 }}>
+            {generatingLabel ?? t('audio.generating')}
+          </span>
+        </div>
+        <style>{`@keyframes tl-spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }

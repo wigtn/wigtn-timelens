@@ -36,6 +36,8 @@ export interface KnowledgePanelProps {
 export interface AudioVisualizerProps {
   state: AudioState;
   audioLevel?: number;
+  /** generating 상태에서 표시할 커스텀 레이블 (기본값: 번역 키 'audio.generating') */
+  generatingLabel?: string;
 }
 
 // --- AgentIndicator ---
@@ -51,6 +53,7 @@ export interface TranscriptProps {
   chunks: TranscriptChunk[];
   isStreaming: boolean;
   locale?: Locale;
+  onScrollUp?: () => void;
 }
 
 // --- BeforeAfterSlider (Part 3) ---
@@ -61,5 +64,8 @@ export interface BeforeAfterSliderProps {
   era: string;
   description?: string;
   onSave: () => void;
-  onShare: () => void;
+  onShare?: () => void;
+  hideSaveButton?: boolean;
+  /** 부모 컨테이너 높이를 채우도록 이미지 영역을 flex-1로 확장 (모달 전체화면용) */
+  fillContainer?: boolean;
 }

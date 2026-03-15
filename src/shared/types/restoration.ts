@@ -50,6 +50,8 @@ export interface RestorationErrorResponse {
 // --- Tool Result -> UI로 전달되는 결과 ---
 export interface RestorationResult {
   type: 'restoration';
+  /** restoration: AI 복원 (BeforeAfter 슬라이더), image_search: 이미지 검색 결과 (단일 이미지) */
+  mode?: 'restoration' | 'image_search';
   imageUrl: string;
   description: string;
   artifactName: string;
@@ -60,6 +62,6 @@ export interface RestorationResult {
 // --- Before/After 슬라이더 상태 ---
 export type RestorationUIState =
   | { status: 'idle' }
-  | { status: 'loading'; progress: number; artifactName: string; era: string }
+  | { status: 'loading'; progress: number; artifactName: string; era: string; mode?: 'restoration' | 'image_search' }
   | { status: 'ready'; data: RestorationResult }
   | { status: 'error'; error: string; retryable: boolean };

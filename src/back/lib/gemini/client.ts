@@ -18,7 +18,7 @@ export function getGeminiClient(): GoogleGenAI {
     if (!apiKey) {
       throw new Error('GOOGLE_GENAI_API_KEY is not set');
     }
-    _instance = new GoogleGenAI({ apiKey });
+    _instance = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: 'v1alpha' } });
   }
   return _instance;
 }
