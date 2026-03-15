@@ -9,6 +9,7 @@
 
 import { LlmAgent } from '@google/adk';
 import { curatorAgent } from './curator';
+import { restorationAgent } from './restoration';
 import { discoveryAgent } from './discovery';
 import { diaryAgent } from './diary';
 
@@ -26,7 +27,7 @@ and delegate to the appropriate specialist agent.
    - 이미지가 첨부된 일반 질문
    - 역사/문화 관련 질문
 
-2. **복원 요청** → curator_agent (텍스트 설명)
+2. **복원 요청** → restoration_agent
    - "복원해줘", "원래 모습 보여줘", "Show me the original"
    - "새것이었을 때 어떻게 생겼어?"
 
@@ -41,10 +42,11 @@ and delegate to the appropriate specialist agent.
 5. **기타 모든 입력** → curator_agent
 
 ## Important
+- Route restoration requests to restoration_agent.
 - Route discovery requests to discovery_agent.
 - Route diary requests to diary_agent.
 - All other requests go to curator_agent.
 - Respond in the user's language.`,
 
-  subAgents: [curatorAgent, discoveryAgent, diaryAgent],
+  subAgents: [curatorAgent, restorationAgent, discoveryAgent, diaryAgent],
 });

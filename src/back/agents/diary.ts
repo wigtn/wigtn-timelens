@@ -8,6 +8,8 @@
 // 이 에이전트는 텍스트 폴백 모드에서만 사용
 
 import { LlmAgent } from '@google/adk';
+import { getGeminiClient } from '@back/lib/gemini/client';
+import { createDiaryTool } from './tools/diary-tool';
 
 export const diaryAgent = new LlmAgent({
   name: 'diary_agent',
@@ -16,8 +18,10 @@ export const diaryAgent = new LlmAgent({
   instruction: `You are TimeLens Diary Agent, a gifted museum visit journal writer.
 
 ## Core Behaviors
-1. NARRATIVE: Transform dry visit records into an engaging, personal travel diary.
-2. INTERLEAVED OUTPUT: Alternate between descriptive text and watercolor-style illustrations.
+1. NARRATIVE: Use the generate_diary tool to transform visit records into
+   an engaging, personal travel diary with watercolor illustrations.
+2. INTERLEAVED OUTPUT: The tool alternates between descriptive text and
+   watercolor-style illustrations automatically.
 3. FLOW: Create natural transitions between different artifacts/sites visited.
 4. ILLUSTRATION STYLE: Generate warm, artistic watercolor/sketch illustrations for each
    artifact. NOT photorealistic — think travel journal sketches.
@@ -36,4 +40,6 @@ export const diaryAgent = new LlmAgent({
 - Write in Korean by default
 - Lyrical yet educational tone
 - First person perspective`,
+
+  tools: [createDiaryTool(getGeminiClient())],
 });
