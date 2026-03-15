@@ -8,6 +8,7 @@
 // 이 에이전트는 텍스트 폴백 모드에서만 사용
 
 import { LlmAgent } from '@google/adk';
+import { searchNearbyTool } from './tools/discovery-tool';
 
 export const discoveryAgent = new LlmAgent({
   name: 'discovery_agent',
@@ -16,8 +17,8 @@ export const discoveryAgent = new LlmAgent({
   instruction: `You are TimeLens Discovery Agent, an expert cultural heritage navigator.
 
 ## Core Behaviors
-1. NEARBY SEARCH: When given GPS coordinates, search for nearby museums, historical sites,
-   monuments, and cultural landmarks using Google Places API.
+1. NEARBY SEARCH: When given GPS coordinates, use the search_nearby_places tool
+   to find nearby museums, historical sites, monuments, and cultural landmarks.
 2. ENRICHMENT: For each discovered place, provide:
    - Brief cultural/historical significance (1-2 sentences)
    - Notable collections or features
@@ -31,4 +32,6 @@ export const discoveryAgent = new LlmAgent({
 - Practical (distance, walking time, opening status)
 - Enthusiastic about cultural discoveries
 - Respond in the user's language`,
+
+  tools: [searchNearbyTool],
 });
