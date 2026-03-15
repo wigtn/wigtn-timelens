@@ -46,38 +46,121 @@ Built for the **Gemini Live Agent Challenge**.
 
 ### Prerequisites
 
-- Node.js 20+
-- npm 10+
-- Google AI Studio API key
-- Firebase project
-- Google Places API key
+- **Node.js 20+** and **npm 10+** — [Download](https://nodejs.org/)
+- **Google Chrome** (recommended) — Microphone & camera permissions work best on Chrome
+- API keys (see Step 2 below)
 
-### Setup
+### Step 1: Clone & Install
 
 ```bash
 git clone https://github.com/wigtn/wigtn-timelens.git
 cd wigtn-timelens
 npm install
+```
+
+### Step 2: Prepare API Keys
+
+You need keys from **3 Google services**. Copy the template first:
+
+```bash
 cp .env.example .env.local
-# Fill in your API keys in .env.local
+```
+
+Then fill in each key:
+
+#### 2-1. Gemini API Key (Required)
+
+This single key powers voice conversation, artifact recognition, image restoration, and diary generation.
+
+1. Go to [Google AI Studio](https://aistudio.google.com/apikey)
+2. Click **"Create API Key"**
+3. Copy the key into `.env.local`:
+
+```env
+GOOGLE_GENAI_API_KEY=your_gemini_api_key_here
+```
+
+#### 2-2. Firebase Project (Required)
+
+Firebase provides anonymous authentication and Firestore for session/diary storage.
+
+1. Go to [Firebase Console](https://console.firebase.google.com/) → **Create a project** (or use existing)
+2. Enable **Authentication** → Sign-in method → **Anonymous** → Enable
+3. Enable **Cloud Firestore** → Create database → Start in **test mode**
+4. Go to **Project Settings** → **General** → scroll to **"Your apps"** → click **Web** (`</>`) → Register app
+5. Copy the config values into `.env.local`:
+
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+```
+
+> **Optional**: `FIREBASE_SERVICE_ACCOUNT_KEY` is only needed for server-side Firestore writes. The app works without it — sessions will be stored client-side only.
+
+#### 2-3. Google Maps & Places API Keys (Required for museum search & discovery)
+
+1. Go to [Google Cloud Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials)
+2. Create an API key (or use existing)
+3. Enable these APIs in [APIs & Services → Library](https://console.cloud.google.com/apis/library):
+   - **Maps JavaScript API** (for museum map display)
+   - **Places API (New)** (for nearby museum/heritage site search)
+4. Copy the keys into `.env.local`:
+
+```env
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_maps_api_key
+GOOGLE_PLACES_API_KEY=your_places_api_key
+```
+
+> **Tip**: You can use the same API key for both if both APIs are enabled on it.
+
+#### Final `.env.local` checklist
+
+```env
+# Gemini (Required)
+GOOGLE_GENAI_API_KEY=✅
+
+# Firebase (Required)
+NEXT_PUBLIC_FIREBASE_API_KEY=✅
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=✅
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=✅
+
+# Maps & Places (Required for museum features)
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=✅
+GOOGLE_PLACES_API_KEY=✅
+
+# App URL (keep default for local dev)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### Step 3: Run
+
+```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000) in **Chrome**.
 
-### Environment Variables
+### Step 4: Use TimeLens
 
-| Variable | Description |
-|----------|-------------|
-| `GOOGLE_GENAI_API_KEY` | Google AI Studio API key |
-| `GOOGLE_PLACES_API_KEY` | Places API key (server-side) |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase client API key |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase auth domain |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase project ID |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Google Maps JavaScript API key |
-| `NEXT_PUBLIC_APP_URL` | App URL (default: `http://localhost:3000`) |
+1. **Allow permissions** — Grant microphone and camera access when prompted
+2. **Select a museum** — Pick one from the nearby list or search by name
+3. **Start a session** — The AI curator will greet you with today's exhibition info
+4. **Try these voice commands**:
+   - *"이거 뭐야?"* / *"What is this?"* — Point camera at an artifact
+   - *"원래 어떻게 생겼어?"* / *"Show me the original"* — Restoration
+   - *"근처에 박물관 있어?"* / *"What's nearby?"* — Discovery
+   - *"다이어리 만들어줘"* / *"Create my diary"* — Visit diary
 
-See `.env.example` for the full list.
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Microphone not working | Check Chrome permissions (lock icon in address bar) |
+| Camera black screen | Ensure no other app is using the camera |
+| "API key not configured" | Verify `.env.local` has all required keys, then restart `npm run dev` |
+| Museum search returns empty | Check that Places API (New) is enabled in GCP Console |
+| Firebase errors | Ensure Firestore is in **test mode** and Anonymous Auth is enabled |
 
 ## Scripts
 
