@@ -17,11 +17,55 @@
   <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" alt="TypeScript 5" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS 4" />
   <img src="https://img.shields.io/badge/Gemini-Live_API-4285F4?logo=google&logoColor=white" alt="Gemini Live API" />
+  <img src="https://img.shields.io/badge/Google_ADK-0.3-4285F4?logo=google&logoColor=white" alt="Google ADK" />
+  <img src="https://img.shields.io/badge/GenAI_SDK-1.43-4285F4?logo=google&logoColor=white" alt="GenAI SDK" />
   <img src="https://img.shields.io/badge/Firebase-Firestore-FFCA28?logo=firebase&logoColor=black" alt="Firebase" />
   <img src="https://img.shields.io/badge/Cloud_Run-Seoul-4285F4?logo=googlecloud&logoColor=white" alt="Cloud Run" />
 </p>
 
 Built for the **Gemini Live Agent Challenge**.
+
+## UX Flow
+
+### Onboarding
+
+<p align="center">
+  <img src="assets/design/01-landing.jpeg" alt="Landing Page" height="500" />
+  &nbsp;&nbsp;
+  <img src="assets/design/02-permissions.jpeg" alt="Permission Setup" height="500" />
+  &nbsp;&nbsp;
+  <img src="assets/design/03-overview.jpeg" alt="Overview" height="500" />
+</p>
+
+<p align="center">
+  <em>Select your language and start → Grant camera & microphone access → "Point your camera at an artifact, and a thousand-year story begins."</em>
+</p>
+
+### Session Start
+
+<p align="center">
+  <img src="assets/design/06-session-init.png" alt="Session Init" height="500" />
+  &nbsp;&nbsp;
+  <img src="assets/design/07-curator-greeting.png" alt="AI Curator Greeting" height="500" />
+</p>
+
+<p align="center">
+  <em>Gemini Live session initializes with your museum context → AI curator greets with today's live exhibitions via Google Search Grounding</em>
+</p>
+
+### Live Experience
+
+<p align="center">
+  <img src="assets/design/05-recognition.png" alt="Artifact Recognition" height="500" />
+  &nbsp;&nbsp;
+  <img src="assets/design/08-live-conversation.png" alt="Live Conversation" height="500" />
+  &nbsp;&nbsp;
+  <img src="assets/design/04-restoration.png" alt="Restoration" height="500" />
+</p>
+
+<p align="center">
+  <em>recognize_artifact identifies the Winged Victory in real-time → Voice conversation with historical narration → AI-generated restoration showing the original Hellenistic appearance</em>
+</p>
 
 ## Features
 
@@ -174,53 +218,80 @@ npm run type-check   # TypeScript validation
 
 ## Architecture
 
+<p align="center">
+  <img src="assets/time-lens-architecture.jpeg" alt="TimeLens Architecture" width="800" />
+</p>
+
+TimeLens runs on a **dual-pipeline architecture**:
+
+- **Pipeline 1 — Live Streaming:** A persistent WebSocket session with Gemini Live API (`gemini-2.5-flash-native-audio`). Microphone audio (PCM16, 16kHz) and camera frames (JPEG, 1fps) stream into the model simultaneously. The model responds with real-time voice output and triggers function calls when needed.
+- **Pipeline 2 — REST On-Demand:** Server-side API routes handle heavier tasks like image generation and external API calls. These are invoked by function calls from Pipeline 1.
+
+### Function Calling Workflow
+
+<p align="center">
+  <img src="assets/time-lens-function-calling-workflow.png" alt="Function Calling Workflow" width="720" />
+</p>
+
+The Gemini Live Agent uses **4 function declarations** to route user intent — no intent classifier needed. The model decides which tool to call based on conversation context:
+
+| Tool | Trigger | Backend | Pipeline |
+|------|---------|---------|----------|
+| `recognize_artifact` | Camera frame detected | Gemini Live API + Google Search Grounding | In-session (no REST call) |
+| `generate_restoration` | "Show me the original" | `POST /api/restore` → Gemini 2.5 Flash Image | REST |
+| `discover_nearby` | "What's nearby?" + GPS | `GET /api/discover` → Google Places API | REST |
+| `create_diary` | "Make my diary" | `POST /api/diary/generate` → Gemini 3 Pro Image | REST |
+
+> `recognize_artifact` is the only tool that stays entirely within the Live session — camera frames are already streaming, so the model analyzes them directly with Google Search Grounding. The other three tools call REST endpoints.
+
+### Google GenAI SDK + ADK
+
+TimeLens is built with **both** `@google/genai` and `@google/adk`:
+
+<table>
+<tr>
+<th>@google/genai (SDK)</th>
+<th>@google/adk (Agent Development Kit)</th>
+</tr>
+<tr>
+<td>
+
+**Primary path** — powers the real-time Live experience
+
+- `GoogleGenAI` client for Live API sessions
+- `Modality` for audio/image streaming
+- `Type` + `Schema` for function declarations
+- Image generation (Gemini Flash, Gemini 3 Pro)
+
+**10 source files** across `src/web/`, `src/back/`, `src/shared/`
+
+</td>
+<td>
+
+**Fallback path** — text-based agent orchestration
+
+- `LlmAgent` for 5 specialist agents
+- `FunctionTool` for 3 tool integrations
+- `InMemoryRunner` for agent execution
+
+**Agent hierarchy:**
 ```
-                    ┌──────────────────────┐
-                    │   User Device        │
-                    │   (Camera + Mic)     │
-                    └──────────┬───────────┘
-                               │
-                    ┌──────────▼───────────┐
-                    │   Next.js Frontend   │
-                    │   (React 19 + TS 5)  │
-                    ├──────────────────────┤
-                    │  MuseumSelector      │
-                    │  OnboardingSplash    │
-                    │  Session Page        │
-                    │  TranscriptChat      │
-                    │  CameraView (PIP)    │
-                    │  RestorationOverlay  │
-                    └───────┬──────┬───────┘
-                            │      │
-              ┌─────────────┘      └─────────────┐
-              ▼                                   ▼
-    ┌──────────────────┐              ┌──────────────────┐
-    │  Pipeline 1      │              │  Pipeline 2      │
-    │  LIVE (Stream)   │              │  REST (On-demand) │
-    │                  │              │                   │
-    │  Gemini Live API │              │  /api/restore     │
-    │  + Audio I/O     │              │  /api/discover    │
-    │  + Video frames  │              │  /api/diary/*     │
-    │  + Function Call │              │  /api/museums/*   │
-    │  + Search Ground │              │  /api/session     │
-    └────────┬─────────┘              └────────┬──────────┘
-             │                                 │
-             └──────────┬──────────────────────┘
-                        ▼
-              ┌──────────────────┐
-              │  External APIs   │
-              ├──────────────────┤
-              │  Gemini Live API │
-              │  Gemini Flash    │
-              │  Google Search   │
-              │  Places API      │
-              │  Firebase        │
-              └──────────────────┘
+timelens_orchestrator
+├── curator_agent
+├── restoration_agent  → generate_restoration_image
+├── discovery_agent    → search_nearby_places
+└── diary_agent        → generate_diary
 ```
 
-**Dual Pipeline:**
-- **Pipeline 1 (Live):** Streaming audio/video via Gemini Live API with function calling
-- **Pipeline 2 (REST):** Image restoration, discovery, diary generation via server API routes
+</td>
+</tr>
+<tr>
+<td><em>Always active — voice + camera streaming</em></td>
+<td><em>Activates when WebSocket is unavailable</em></td>
+</tr>
+</table>
+
+Both paths share the **same backend APIs** — whether a user speaks or types, they get the same restoration, discovery, and diary capabilities. Run `npx tsx scripts/adk-demo.ts` to see the ADK agents in action.
 
 ### REST API Routes
 
@@ -242,10 +313,13 @@ src/
   shared/         # Shared types, Gemini tools, configs
   web/            # Client components & hooks
   back/           # Server-side logic (agents, geo, Firebase)
+    agents/       # ADK agents (orchestrator + 4 specialists)
+    agents/tools/ # FunctionTool implementations
 mobile/           # React Native + Expo app
+scripts/          # ADK demo script
 firebase/         # Firestore & Storage security rules
 docs/             # PRDs, design docs
-assets/           # Logo, reference images
+assets/           # Logo, architecture diagrams
 .github/          # GitHub Actions CI/CD
 ```
 
@@ -258,6 +332,15 @@ Deployed to **Google Cloud Run** (asia-northeast3, Seoul) via GitHub Actions.
 docker build -t timelens .
 docker run -p 8080:8080 timelens
 ```
+
+## Google Cloud Services
+
+| Service | Purpose |
+|---------|---------|
+| **Cloud Run** | Production deployment (Seoul region) |
+| **Firebase Auth** | Anonymous authentication |
+| **Cloud Firestore** | Session, visit, and diary storage |
+| **Google Places API** | Museum and heritage site search |
 
 ## License
 
