@@ -1,0 +1,35 @@
+type User @table {
+  displayName: String!
+  email: String!
+  createdAt: Timestamp!
+  photoUrl: String
+}
+
+type Task @table {
+  user: User!
+  title: String!
+  createdAt: Timestamp!
+  isNoTask: Boolean!
+  description: String
+  dueDate: Date
+  completedAt: Timestamp
+  category: Category
+}
+
+type Category @table {
+  user: User!
+  name: String!
+  createdAt: Timestamp!
+  description: String
+  color: String
+}
+
+type History @table {
+  user: User!
+  task: Task!
+  taskTitle: String!
+  actionType: String!
+  actionDate: Timestamp!
+  taskDescription: String
+  isNoTask: Boolean
+}
