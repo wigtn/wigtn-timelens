@@ -18,10 +18,15 @@ export async function GET(): Promise<NextResponse<ApiResponse<HealthResponse>>> 
     placesApi: !!process.env.GOOGLE_PLACES_API_KEY,
   };
 
-  const allHealthy = Object.values(services).every(Boolean);
+  // Core health depends only on Gemini API key (required).
+  // Firebase and Places are optional — their absence is "degraded" not "unhealthy".
+  const coreHealthy = services.liveApi && services.imageGen;
+
+  const allConfigured = Object.values(services).every(Boolean);
+  const healthStatus: HealthResponse['status'] = coreHealthy ? (allConfigured ? 'ok' : 'degraded') : 'degraded';
 
   const healthData: HealthResponse = {
-    status: allHealthy ? 'ok' : 'degraded',
+    status: healthStatus,
     version: process.env.npm_package_version || '0.1.0',
     uptime: Math.floor((Date.now() - startTime) / 1000),
     services,
@@ -32,7 +37,8 @@ export async function GET(): Promise<NextResponse<ApiResponse<HealthResponse>>> 
     data: healthData,
   };
 
+  // Return 200 as long as core (Gemini) is configured; 503 only if Gemini is missing
   return NextResponse.json(response, {
-    status: allHealthy ? 200 : 503,
+    status: coreHealthy ? 200 : 503,
   });
 }

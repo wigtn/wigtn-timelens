@@ -18,6 +18,14 @@ const QuerySchema = z.object({
 type MuseumsData = { museums: NearbyPlace[] };
 
 export async function GET(request: NextRequest) {
+  if (!process.env.GOOGLE_PLACES_API_KEY) {
+    const res: ApiResponse<MuseumsData> = {
+      success: false,
+      error: { code: 'NOT_CONFIGURED', message: 'Museum search requires GOOGLE_PLACES_API_KEY', retryable: false },
+    };
+    return NextResponse.json(res, { status: 501 });
+  }
+
   const { searchParams } = request.nextUrl;
   const parsed = QuerySchema.safeParse({
     lat: searchParams.get('lat'),

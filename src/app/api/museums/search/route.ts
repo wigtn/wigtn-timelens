@@ -74,9 +74,9 @@ export async function GET(request: NextRequest) {
   if (!apiKey) {
     const res: ApiResponse<MuseumsData> = {
       success: false,
-      error: { code: 'CONFIG_ERROR', message: 'Places API not configured', retryable: false },
+      error: { code: 'NOT_CONFIGURED', message: 'Museum search requires GOOGLE_PLACES_API_KEY', retryable: false },
     };
-    return NextResponse.json(res, { status: 500 });
+    return NextResponse.json(res, { status: 501 });
   }
 
   const controller = new AbortController();

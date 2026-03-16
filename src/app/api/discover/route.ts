@@ -12,6 +12,20 @@ import type { ApiResponse } from '@shared/types/api';
 
 export async function GET(request: NextRequest) {
   try {
+    if (!process.env.GOOGLE_PLACES_API_KEY) {
+      return NextResponse.json<ApiResponse<never>>(
+        {
+          success: false,
+          error: {
+            code: 'NOT_CONFIGURED',
+            message: 'Discovery feature requires GOOGLE_PLACES_API_KEY. Set it in .env.local to enable nearby search.',
+            retryable: false,
+          },
+        },
+        { status: 501 }
+      );
+    }
+
     const { searchParams } = request.nextUrl;
     const lat = parseFloat(searchParams.get('lat') ?? '');
     const lng = parseFloat(searchParams.get('lng') ?? '');

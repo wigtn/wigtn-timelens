@@ -60,17 +60,15 @@ npm install
 
 ### Step 2: Prepare API Keys
 
-You need keys from **3 Google services**. Copy the template first:
+Copy the template first:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Then fill in each key:
-
 #### 2-1. Gemini API Key (Required)
 
-This single key powers voice conversation, artifact recognition, image restoration, and diary generation.
+**This is the only key you need** to use the core features: voice conversation, artifact recognition, image restoration, and diary generation.
 
 1. Go to [Google AI Studio](https://aistudio.google.com/apikey)
 2. Click **"Create API Key"**
@@ -80,9 +78,11 @@ This single key powers voice conversation, artifact recognition, image restorati
 GOOGLE_GENAI_API_KEY=your_gemini_api_key_here
 ```
 
-#### 2-2. Firebase Project (Required)
+> With just this key, you can start the app and use Live AI Curator, Artifact Recognition, Image Restoration, and Visit Diary.
 
-Firebase provides anonymous authentication and Firestore for session/diary storage.
+#### 2-2. Firebase Project (Optional — for session persistence)
+
+Without Firebase, the app works fully but session history and diary sharing won't persist across page reloads.
 
 1. Go to [Firebase Console](https://console.firebase.google.com/) → **Create a project** (or use existing)
 2. Enable **Authentication** → Sign-in method → **Anonymous** → Enable
@@ -96,9 +96,9 @@ NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
 ```
 
-> **Optional**: `FIREBASE_SERVICE_ACCOUNT_KEY` is only needed for server-side Firestore writes. The app works without it — sessions will be stored client-side only.
+#### 2-3. Google Maps & Places API Keys (Optional — for museum search & nearby discovery)
 
-#### 2-3. Google Maps & Places API Keys (Required for museum search & discovery)
+Without these keys, the "What's nearby?" discovery feature won't work, but all other features remain fully functional.
 
 1. Go to [Google Cloud Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials)
 2. Create an API key (or use existing)
@@ -117,17 +117,17 @@ GOOGLE_PLACES_API_KEY=your_places_api_key
 #### Final `.env.local` checklist
 
 ```env
-# Gemini (Required)
+# Gemini (Required — powers all AI features)
 GOOGLE_GENAI_API_KEY=✅
 
-# Firebase (Required)
-NEXT_PUBLIC_FIREBASE_API_KEY=✅
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=✅
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=✅
+# Firebase (Optional — session persistence & diary sharing)
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
 
-# Maps & Places (Required for museum features)
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=✅
-GOOGLE_PLACES_API_KEY=✅
+# Maps & Places (Optional — museum search & nearby discovery)
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
+GOOGLE_PLACES_API_KEY=
 
 # App URL (keep default for local dev)
 NEXT_PUBLIC_APP_URL=http://localhost:3000
@@ -144,8 +144,8 @@ Open [http://localhost:3000](http://localhost:3000) in **Chrome**.
 ### Step 4: Use TimeLens
 
 1. **Allow permissions** — Grant microphone and camera access when prompted
-2. **Select a museum** — Pick one from the nearby list or search by name
-3. **Start a session** — The AI curator will greet you with today's exhibition info
+2. **Select a museum** — Pick one from the nearby list, search by name, or skip to start directly
+3. **Start a session** — The AI curator will greet you with context about current exhibitions
 4. **Try these voice commands**:
    - *"이거 뭐야?"* / *"What is this?"* — Point camera at an artifact
    - *"원래 어떻게 생겼어?"* / *"Show me the original"* — Restoration
@@ -158,9 +158,9 @@ Open [http://localhost:3000](http://localhost:3000) in **Chrome**.
 |-------|----------|
 | Microphone not working | Check Chrome permissions (lock icon in address bar) |
 | Camera black screen | Ensure no other app is using the camera |
-| "API key not configured" | Verify `.env.local` has all required keys, then restart `npm run dev` |
-| Museum search returns empty | Check that Places API (New) is enabled in GCP Console |
-| Firebase errors | Ensure Firestore is in **test mode** and Anonymous Auth is enabled |
+| "API key not configured" | Verify `GOOGLE_GENAI_API_KEY` is set in `.env.local`, then restart `npm run dev` |
+| Museum search returns empty | Places API keys are optional; check that Places API (New) is enabled if you added them |
+| Firebase warnings in console | Firebase keys are optional; session data won't persist without them but the app works |
 
 ## Scripts
 
