@@ -30,11 +30,11 @@
 ### 온보딩
 
 <p align="center">
-  <img src="assets/design/01-landing.jpeg" alt="랜딩 페이지" height="500" />
+  <img src="assets/design/01-landing.jpeg" alt="랜딩 페이지" width="250" />
   &nbsp;&nbsp;
-  <img src="assets/design/02-permissions.jpeg" alt="권한 설정" height="500" />
+  <img src="assets/design/02-permissions.jpeg" alt="권한 설정" width="250" />
   &nbsp;&nbsp;
-  <img src="assets/design/03-overview.jpeg" alt="Overview" height="500" />
+  <img src="assets/design/03-overview.jpeg" alt="Overview" width="250" />
 </p>
 
 <p align="center">
