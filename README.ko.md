@@ -324,4 +324,6 @@ docker run -p 8080:8080 timelens
 
 ## 라이선스
 
+이 프로젝트는 [Apache License 2.0](LICENSE)으로 배포됩니다.
+
 Gemini Live Agent Challenge 해커톤 출품작입니다.
