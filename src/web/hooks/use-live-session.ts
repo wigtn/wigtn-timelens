@@ -217,9 +217,14 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
         if (data.delta) {
           const last = prev[prev.length - 1];
           if (last && last.role === 'assistant' && !last.id.endsWith('-final') && !last.sources) {
+            // Live API 스트리밍 delta는 공백 없이 들어오는 경우가 많음 → 단어 경계에 공백 삽입
+            const needsSpace = last.text.length > 0
+              && !/\s$/.test(last.text)
+              && !/^\s/.test(data.delta);
+            const joined = needsSpace ? last.text + ' ' + data.delta : last.text + data.delta;
             return [
               ...prev.slice(0, -1),
-              { ...last, text: last.text + data.delta },
+              { ...last, text: joined },
             ];
           }
           return [
@@ -355,7 +360,20 @@ function createSessionEvents(refs: SessionRefs, setters: SessionSetters): LiveSe
           break;
         case 'create_diary':
           if (data.result.type === 'diary') {
-            // 클라이언트에서 Firestore에 다이어리 저장 (auth 컨텍스트 활용)
+            // sessionStorage에 즉시 캐시 — 페이지 이동 전 Firestore 완료 대기 불필요
+            if (data.result.entries) {
+              const cacheData = {
+                id: data.result.diaryId,
+                title: data.result.title,
+                entries: data.result.entries,
+                createdAt: Date.now(),
+                shareToken: data.result.shareToken,
+              };
+              try {
+                sessionStorage.setItem(`diary_${data.result.diaryId}`, JSON.stringify(cacheData));
+              } catch { /* sessionStorage 용량 초과 무시 */ }
+            }
+            // 클라이언트에서 Firestore에 다이어리 저장 (백그라운드, 실패해도 무관)
             if (data.result.entries && refs.sessionId.current) {
               createDiary(data.result.diaryId, {
                 sessionId: refs.sessionId.current,

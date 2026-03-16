@@ -675,6 +675,19 @@ export class LiveSession {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleDiary(fc: any): Promise<void> {
+    // 방문 기록 없으면 API 호출하지 않고 AI에 알림
+    if (this.visits.length === 0) {
+      this.session?.sendToolResponse({
+        functionResponses: [{
+          id: fc.id, name: fc.name,
+          response: { status: 'error', message: 'No artifacts scanned yet. Please scan at least one artifact before creating a diary.' },
+        }],
+      });
+      this.pendingToolCalls.delete(fc.id);
+      this.scheduleAgentReturn();
+      return;
+    }
+
     this.switchAgent('diary', '다이어리를 생성합니다');
     this.updateAudioState('generating');
 

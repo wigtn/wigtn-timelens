@@ -1,59 +1,60 @@
 // ============================================================
 // 파일: src/app/diary/[id]/page.tsx
 // 담당: Part 4
-// 역할: 다이어리 공유 페이지 (SSR)
-// 출처: part4-discovery-diary.md §2.6
+// 역할: 다이어리 뷰어 — sessionStorage 우선, Firestore 폴백
 // ============================================================
 
-import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { getDiary } from '@back/lib/firebase/firestore';
 import { toDiaryData } from '@back/lib/diary-utils';
 import DiaryShareClient from './diary-share-client';
+import type { DiaryData } from '@shared/types/diary';
 
-// 공유 페이지는 60초마다 ISR 재검증
-export const revalidate = 60;
+export default function DiaryPage() {
+  const params = useParams();
+  const id = typeof params.id === 'string' ? params.id : '';
+  const [diary, setDiary] = useState<DiaryData | null>(null);
+  const [error, setError] = useState(false);
 
-interface Props {
-  params: Promise<{ id: string }>;
-}
+  useEffect(() => {
+    if (!id) return;
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+    // 1) sessionStorage 캐시 우선
+    try {
+      const cached = sessionStorage.getItem(`diary_${id}`);
+      if (cached) {
+        setDiary(JSON.parse(cached) as DiaryData);
+        return;
+      }
+    } catch { /* ignore */ }
 
-  try {
-    const diary = await getDiary(id);
-    if (!diary) {
-      return { title: '다이어리를 찾을 수 없습니다 — TimeLens' };
-    }
+    // 2) Firestore 폴백 (공유 링크 접근 등)
+    getDiary(id)
+      .then((doc) => {
+        if (doc) setDiary(toDiaryData(doc));
+        else setError(true);
+      })
+      .catch(() => setError(true));
+  }, [id]);
 
-    const firstTextEntry = diary.entries.find((e) => e.type === 'text');
-    const description = firstTextEntry
-      ? firstTextEntry.content.slice(0, 160)
-      : 'TimeLens로 만든 박물관 방문 다이어리';
-
-    return {
-      title: `${diary.title} — TimeLens Diary`,
-      description,
-      openGraph: {
-        title: diary.title,
-        description,
-        type: 'article',
-        siteName: 'TimeLens',
-      },
-    };
-  } catch {
-    return { title: 'TimeLens Diary' };
-  }
-}
-
-export default async function DiarySharePage({ params }: Props) {
-  const { id } = await params;
-
-  const diaryDoc = await getDiary(id);
-  if (!diaryDoc) {
-    notFound();
+  if (error) {
+    return (
+      <main className="h-screen flex items-center justify-center bg-gray-950">
+        <p className="text-gray-400 text-sm">다이어리를 찾을 수 없습니다.</p>
+      </main>
+    );
   }
 
-  return <DiaryShareClient diary={toDiaryData(diaryDoc)} />;
+  if (!diary) {
+    return (
+      <main className="h-screen flex items-center justify-center bg-gray-950">
+        <div className="w-6 h-6 rounded-full border-2 border-timelens-gold/30 border-t-timelens-gold animate-spin" />
+      </main>
+    );
+  }
+
+  return <DiaryShareClient diary={diary} />;
 }
