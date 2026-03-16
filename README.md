@@ -30,11 +30,11 @@ Built for the **Gemini Live Agent Challenge**.
 ### Onboarding
 
 <p align="center">
-  <img src="assets/design/01-landing.jpeg" alt="Landing Page" width="250" />
+  <img src="assets/design/01-landing.jpeg" alt="Landing Page" height="420" />
   &nbsp;&nbsp;
-  <img src="assets/design/02-permissions.jpeg" alt="Permission Setup" width="250" />
+  <img src="assets/design/02-permissions.jpeg" alt="Permission Setup" height="420" />
   &nbsp;&nbsp;
-  <img src="assets/design/03-overview.jpeg" alt="Overview" width="250" />
+  <img src="assets/design/03-overview.jpeg" alt="Overview" height="420" />
 </p>
 
 <p align="center">
