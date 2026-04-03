@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - name: "WIGTN Crew"
+    website: "https://wigtn.com"
+repository-code: "https://github.com/wigtn/wigtn-timelens"
+url: "https://wigtn.com"
+abstract: "TimeLens — AI-powered cultural heritage companion. Brings museum artifacts to life through real-time conversation, image restoration, and interactive discovery. Built with Gemini Live API and Google ADK."
+keywords:
+  - ai-native
+  - wigtn
+  - korea
+  - cultural-heritage
+  - museum
+  - gemini
+  - google-adk
+  - image-restoration
+license: Apache-2.0
